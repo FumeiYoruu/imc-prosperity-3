@@ -1,9 +1,3 @@
-from datamodel import OrderDepth, TradingState, Order
-from typing import List, Dict
-import statistics
-import numpy as np
-from collections import defaultdict
-
 class Trader:
     
     def __init__(self):
@@ -12,13 +6,13 @@ class Trader:
         self.price_history = []
         self.volatility = 0
         self.mean_price = 0
+        self.last_trade_price = None
+        self.consecutive_losses = 0  # Track losing streaks
         
-        # Markov Chain components
-        self.state_transitions = defaultdict(lambda: defaultdict(int))
-        self.current_state = None
-        self.previous_state = None
-        self.state_bins = 5  # Number of discrete price states
-        
+        # Simplified Markov components
+        self.state_transitions = {'up': 0, 'down': 0, 'neutral': 0}
+        self.last_direction = None
+
     def run(self, state: TradingState):
         result = {}
         
@@ -28,7 +22,7 @@ class Trader:
         order_depth = state.order_depths["RAINFOREST_RESIN"]
         orders: List[Order] = []
         
-        # Update position
+        # Update position and track P&L
         if "RAINFOREST_RESIN" in state.position:
             self.current_position = state.position["RAINFOREST_RESIN"]
         
@@ -37,99 +31,60 @@ class Trader:
             best_bid = max(order_depth.buy_orders.keys())
             best_ask = min(order_depth.sell_orders.keys())
             mid_price = (best_bid + best_ask) / 2
-            self.price_history.append(mid_price)
             
-            # Maintain price history window
+            # Track price history (limited to recent data)
+            self.price_history.append(mid_price)
             if len(self.price_history) > 100:
                 self.price_history = self.price_history[-50:]
             
-            # Markov Chain Analysis
-            if len(self.price_history) > 1:
-                # Discretize price states
-                price_min = min(self.price_history)
-                price_max = max(self.price_history)
-                bin_size = (price_max - price_min) / self.state_bins
-                
-                # Update current state
-                self.previous_state = self.current_state
-                self.current_state = int((mid_price - price_min) / bin_size) if bin_size > 0 else 0
-                
-                # Update transition matrix
-                if self.previous_state is not None:
-                    self.state_transitions[self.previous_state][self.current_state] += 1
-            
-            # Calculate statistical measures
-            if len(self.price_history) >= 10:
+            # Calculate basic statistics
+            if len(self.price_history) >= 20:  # Require more data points
                 self.mean_price = statistics.mean(self.price_history)
                 self.volatility = statistics.stdev(self.price_history) if len(self.price_history) > 1 else 0
                 
-                # Markov Chain Prediction
-                next_state_probs = self.predict_next_state()
-                predicted_direction = self.interpret_prediction(next_state_probs)
+                # Simplified direction detection (no Markov states)
+                current_direction = self.detect_direction()
                 
-                # Enhanced trading logic combining stats and Markov
-                self.generate_orders(orders, order_depth, predicted_direction)
+                # More conservative trading ranges
+                lower_bound = self.mean_price - (0.7 * self.volatility)  # Wider bands
+                upper_bound = self.mean_price + (0.7 * self.volatility)
+                
+                # Add liquidity instead of taking it
+                self.make_market(orders, order_depth, lower_bound, upper_bound)
         
         result["RAINFOREST_RESIN"] = orders
         return result, 0, state.traderData
     
-    def predict_next_state(self):
-        """Use Markov chain to predict probabilities of next states"""
-        if self.current_state is None or self.current_state not in self.state_transitions:
-            return None
-            
-        total_transitions = sum(self.state_transitions[self.current_state].values())
-        return {state: count/total_transitions 
-                for state, count in self.state_transitions[self.current_state].items()}
-    
-    def interpret_prediction(self, next_state_probs):
-        """Interpret Markov chain prediction into market direction"""
-        if not next_state_probs:
+    def detect_direction(self):
+        """Simplified trend detection without Markov chains"""
+        if len(self.price_history) < 5:
             return "neutral"
             
-        # Calculate expected state change
-        current = self.current_state
-        expected_change = sum((state - current) * prob 
-                         for state, prob in next_state_probs.items())
+        short_term = statistics.mean(self.price_history[-3:])
+        long_term = statistics.mean(self.price_history[-10:])
         
-        if expected_change > 0.2:
+        if short_term > long_term * 1.005:
             return "up"
-        elif expected_change < -0.2:
+        elif short_term < long_term * 0.995:
             return "down"
-        else:
-            return "neutral"
+        return "neutral"
     
-    def generate_orders(self, orders: List[Order], order_depth: OrderDepth, predicted_direction: str):
-        """Generate orders combining statistical and Markov analysis"""
+    def make_market(self, orders: List[Order], order_depth: OrderDepth, lower: float, upper: float):
+        """Post limit orders instead of market orders"""
         best_bid = max(order_depth.buy_orders.keys())
         best_ask = min(order_depth.sell_orders.keys())
         
-        # Base trading ranges using volatility
-        lower_bound = self.mean_price - (0.5 * self.volatility) if self.volatility > 0 else self.mean_price * 0.995
-        upper_bound = self.mean_price + (0.5 * self.volatility) if self.volatility > 0 else self.mean_price * 1.005
+        # More conservative position sizing
+        max_trade_size = max(5, int(self.position_limit * 0.1))  # Smaller trades
         
-        # Adjust bounds based on Markov prediction
-        if predicted_direction == "up":
-            lower_bound *= 1.005  # Be more aggressive buying if expecting upward movement
-        elif predicted_direction == "down":
-            upper_bound *= 0.995  # Be more aggressive selling if expecting downward movement
+        # Post bids (buy orders)
+        bid_price = min(best_bid + 1, lower)  # Don't chase prices
+        bid_size = min(max_trade_size, self.position_limit - self.current_position)
+        if bid_size > 0 and bid_price < upper:
+            orders.append(Order("RAINFOREST_RESIN", bid_price, bid_size))
         
-        # Buy logic
-        if best_ask < lower_bound:
-            buy_amount = min(
-                -order_depth.sell_orders[best_ask],
-                self.position_limit - self.current_position,
-                10  # Max units per trade
-            )
-            if buy_amount > 0:
-                orders.append(Order("RAINFOREST_RESIN", best_ask, buy_amount))
-        
-        # Sell logic
-        if best_bid > upper_bound:
-            sell_amount = min(
-                order_depth.buy_orders[best_bid],
-                self.position_limit + self.current_position,
-                10  # Max units per trade
-            )
-            if sell_amount > 0:
-                orders.append(Order("RAINFOREST_RESIN", best_bid, -sell_amount))
+        # Post asks (sell orders)
+        ask_price = max(best_ask - 1, upper)  # Don't give away edge
+        ask_size = min(max_trade_size, self.position_limit + self.current_position)
+        if ask_size > 0 and ask_price > lower:
+            orders.append(Order("RAINFOREST_RESIN", ask_price, -ask_size))
