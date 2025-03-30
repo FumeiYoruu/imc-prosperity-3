@@ -147,59 +147,83 @@ class Trader:
         if "RAINFOREST_RESIN" in state.position:
             self.current_position = state.position["RAINFOREST_RESIN"]
         
-        # Get best bid/ask prices
         best_bid = max(order_depth.buy_orders.keys()) if order_depth.buy_orders else None
         best_ask = min(order_depth.sell_orders.keys()) if order_depth.sell_orders else None
+        bids = list(order_depth.buy_orders.keys()) if order_depth.buy_orders else None
+        asks = list(order_depth.sell_orders.keys()) if order_depth.sell_orders else None
         
         if best_bid and best_ask:
             mid_price = (best_bid + best_ask) / 2
             self.price_history.append(mid_price)
             
-            if len(self.price_history) > 50:
-                self.price_history = self.price_history[-50:]
+            if len(self.price_history) > 100:
+                self.price_history = self.price_history[-100:]
             if len(self.price_history) >= 10:  
                 self.mean_price = statistics.mean(self.price_history)
                 self.volatility = statistics.stdev(self.price_history)
                 
                 lower_bound = self.mean_price - (0.5 * self.volatility)
                 upper_bound = self.mean_price + (0.5 * self.volatility)
-                if best_ask < lower_bound:
-                    buy_amount = min(
-                        -order_depth.sell_orders[best_ask],  
-                        self.position_limit - self.current_position,  
-                        10  
-                    )
-                    if buy_amount > 0:
-                        orders.append(Order("RAINFOREST_RESIN", best_ask, buy_amount))
-                        self.current_position += buy_amount
-                
-                if best_bid > upper_bound:
-                    sell_amount = min(
-                        order_depth.buy_orders[best_bid], 
-                        self.position_limit + self.current_position,  
-                        10 
-                    )
-                    if sell_amount > 0:
-                        orders.append(Order("RAINFOREST_RESIN", best_bid, -sell_amount))
-                        self.current_position -= sell_amount
-                
-                elif best_ask < self.mean_price - (0.25 * self.volatility):
-                    buy_amount = min(
-                        -order_depth.sell_orders[best_ask],
-                        self.position_limit - self.current_position,
-                        5
-                    )
-                    if buy_amount > 0:
-                        orders.append(Order("RAINFOREST_RESIN", best_ask, buy_amount))
-                
-                elif best_bid > self.mean_price + (0.25 * self.volatility):
-                    sell_amount = min(
-                        order_depth.buy_orders[best_bid],
-                        self.position_limit + self.current_position,
-                        5
-                    )
-                    if sell_amount > 0:
-                        orders.append(Order("RAINFOREST_RESIN", best_bid, -sell_amount))
+                if asks != None: 
+                    for ask in asks:
+                        if ask < lower_bound:
+                            buy_amount = min(
+                                -order_depth.sell_orders[ask],  
+                                self.position_limit - self.current_position,   
+                            )
+                            if buy_amount > 0:
+                                orders.append(Order("RAINFOREST_RESIN", ask, buy_amount))
+                                self.current_position += buy_amount
+                        elif ask < self.mean_price - (0.25 * self.volatility):
+                            buy_amount = min(
+                                -order_depth.sell_orders[ask],
+                                self.position_limit - self.current_position,
+                                5
+                            )
+                            if buy_amount > 0:   
+                                orders.append(Order("RAINFOREST_RESIN", ask, buy_amount))
+                                self.current_position += buy_amount
+                if bids != None:
+                    for bid in bids: 
+                        if bid > upper_bound:
+                            sell_amount = min(
+                                order_depth.buy_orders[bid], 
+                                self.position_limit + self.current_position,  
+                            )
+                            if sell_amount > 0:
+                                orders.append(Order("RAINFOREST_RESIN", bid, -sell_amount))
+                                self.current_position -= sell_amount
+                        
+                        
+                        
+                        elif bid > self.mean_price + (0.25 * self.volatility):
+                            sell_amount = min(
+                                order_depth.buy_orders[bid],
+                                self.position_limit + self.current_position,
+                                5
+                            )
+                            if sell_amount > 0:
+                                orders.append(Order("RAINFOREST_RESIN", bid, -sell_amount))
+                                self.current_position -= sell_amount
+                if asks != None: 
+                    for ask in asks:
+                        if ask < lower_bound:
+                            buy_amount = min(
+                                -order_depth.sell_orders[ask],  
+                                self.position_limit - self.current_position,   
+                            )
+                            if buy_amount > 0:
+                                orders.append(Order("RAINFOREST_RESIN", ask, buy_amount))
+                                self.current_position += buy_amount
+                        elif ask < self.mean_price - (0.25 * self.volatility):
+                            buy_amount = min(
+                                -order_depth.sell_orders[ask],
+                                self.position_limit - self.current_position,
+                                5
+                            )
+                            if buy_amount > 0:   
+                                orders.append(Order("RAINFOREST_RESIN", ask, buy_amount))
+                                self.current_position += buy_amount
         
         result["RAINFOREST_RESIN"] = orders
         traderData = "" 
