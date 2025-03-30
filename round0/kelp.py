@@ -16,9 +16,6 @@ class Trader:
     def run(self, state: TradingState):
         result = {}
         
-        # Only trade Kelp
-        if "KELP" not in state.order_depths:
-            return result, 0, state.traderData
             
         order_depth = state.order_depths["KELP"]
         orders: List[Order] = []
@@ -48,11 +45,11 @@ class Trader:
                 short_ma = statistics.mean(self.price_history[-3:])
                 long_ma = statistics.mean(self.price_history[-10:])
                 self.trend = "up" if short_ma > long_ma * 1.01 else "down" if short_ma < long_ma * 0.99 else "neutral"
-            
+            mid_price = statistics.mean(self.price_history[-10:]) if len(self.price_history) > 10 else mid_price
             # Trading Strategy
             if self.trend == "up":
                 # Buy in uptrend (but don't chase prices too high)
-                if best_ask < mid_price + self.volatility * 0.5:
+                if best_ask != None and best_ask < mid_price - self.volatility * 0.5:
                     buy_amount = min(
                         -order_depth.sell_orders[best_ask],  # Available quantity
                         self.position_limit - self.current_position,  # Position limit
@@ -64,7 +61,7 @@ class Trader:
             
             elif self.trend == "down":
                 # Sell in downtrend (but don't sell too low)
-                if best_bid > mid_price - self.volatility * 0.5:
+                if best_bid != None and best_bid > mid_price + self.volatility * 0.5:
                     sell_amount = min(
                         order_depth.buy_orders[best_bid],  # Available quantity
                         self.position_limit + self.current_position,  # Position limit
@@ -75,7 +72,7 @@ class Trader:
                         self.current_position -= sell_amount
             
             else:  # Neutral market - mean reversion
-                if best_ask < mid_price - self.volatility * 0.3:
+                if best_ask != None and best_ask < mid_price - self.volatility * 0.3:
                     # Buy if price drops below average
                     buy_amount = min(
                         -order_depth.sell_orders[best_ask],
@@ -84,8 +81,9 @@ class Trader:
                     )
                     if buy_amount > 0:
                         orders.append(Order("KELP", best_ask, buy_amount))
+                        self.current_position += buy_amount
                 
-                elif best_bid > mid_price + self.volatility * 0.3:
+                if best_bid != None and best_bid > mid_price + self.volatility * 0.3:
                     # Sell if price rises above average
                     sell_amount = min(
                         order_depth.buy_orders[best_bid],
@@ -93,6 +91,7 @@ class Trader:
                         5
                     )
                     if sell_amount > 0:
+                        self.current_position -= sell_amount
                         orders.append(Order("KELP", best_bid, -sell_amount))
         
         result["KELP"] = orders

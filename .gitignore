@@ -1,0 +1,6 @@
+*.log
+# Ignore Python cache
+/round0/__pycache__/
+*.pyc
+*.pyo
+*.pyd
