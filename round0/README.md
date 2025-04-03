@@ -5,5 +5,5 @@
 Current Best: resin_combine.py\
 Performance: \
 KELP: 0 \
-RAINFOREST_RESIN: 2,028 \
-Total profit: 2,028
+RAINFOREST_RESIN: 2,000 \
+Total profit: 2,000

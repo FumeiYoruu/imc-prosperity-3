@@ -153,7 +153,7 @@ class Trader:
         bids = list(order_depth.buy_orders.keys()) if order_depth.buy_orders else None
         asks = list(order_depth.sell_orders.keys()) if order_depth.sell_orders else None
         if best_bid and best_ask:
-            mid_price = (best_bid + best_ask) / 2
+            mid_price = (best_bid * order_depth.buy_orders[best_bid] + best_ask * (-order_depth.sell_orders[best_ask]))/ (order_depth.buy_orders[best_bid] - order_depth.sell_orders[best_ask]);
             self.price_history.append(mid_price)
             
             if len(self.price_history) > 100:
@@ -214,16 +214,6 @@ class Trader:
                                 if sell_amount > 0:
                                     orders.append(Order("RAINFOREST_RESIN", bid, -sell_amount))
                                     self.current_position -= sell_amount
-        
-        if best_bid and best_ask:
-            mid_price = (best_bid * order_depth.buy_orders[best_bid] + best_ask * (-order_depth.sell_orders[best_ask]))/ (order_depth.buy_orders[best_bid] - order_depth.sell_orders[best_ask]);
-            self.price_history.append(mid_price)
-            
-            if len(self.price_history) > 100:
-                self.price_history = self.price_history[-100:]
-            if len(self.price_history) >= 10:  
-                self.mean_price = statistics.mean(self.price_history)
-                self.volatility = statistics.stdev(self.price_history)
                 
                 lower_bound = self.mean_price - (0.5 * self.volatility)
                 upper_bound = self.mean_price + (0.5 * self.volatility)
