@@ -135,6 +135,7 @@ class Trader:
         self.mean_price = 0  
         self.last_trade_price = None  
         
+        
     def run(self, state: TradingState):
         result = {}
 
@@ -153,7 +154,7 @@ class Trader:
         asks = list(order_depth.sell_orders.keys()) if order_depth.sell_orders else None
         
         if best_bid and best_ask:
-            mid_price = (best_bid + best_ask) / 2
+            mid_price = (best_bid * order_depth.buy_orders[best_bid] + best_ask * (-order_depth.sell_orders[best_ask]))/ (order_depth.buy_orders[best_bid] - order_depth.sell_orders[best_ask]);
             self.price_history.append(mid_price)
             
             if len(self.price_history) > 100:
