@@ -143,6 +143,7 @@ class Trader:
             return result, 0, state.traderData
             
         order_depth = state.order_depths["RAINFOREST_RESIN"]
+        order_dict = {}
         orders: List[Order] = []
         
         if "RAINFOREST_RESIN" in state.position:
@@ -157,23 +158,24 @@ class Trader:
             mid_price = (best_bid * order_depth.buy_orders[best_bid] + best_ask * (-order_depth.sell_orders[best_ask]))/ (order_depth.buy_orders[best_bid] - order_depth.sell_orders[best_ask]);
             self.price_history.append(mid_price)
             
-            if len(self.price_history) > 100:
-                self.price_history = self.price_history[-100:]
+            # if len(self.price_history) > 100:
+            #     self.price_history = self.price_history[-100:]
             if len(self.price_history) >= 10:  
-                self.mean_price = statistics.mean(self.price_history)
+                self.mean_price = 10000
                 self.volatility = statistics.stdev(self.price_history)
                 
-                lower_bound = self.mean_price - (0.5 * self.volatility)
-                upper_bound = self.mean_price + (0.5 * self.volatility)
+                
+                lower_bound = self.mean_price - (0.1 * self.volatility)
+                upper_bound = self.mean_price + (0.1 * self.volatility)
                 if asks != None: 
                     for ask in asks:
                         if ask < lower_bound:
                             buy_amount = min(
                                 -order_depth.sell_orders[ask],  
-                                self.position_limit - self.current_position,   
+                                self.position_limit - self.current_position, 
                             )
                             if buy_amount > 0:
-                                orders.append(Order("RAINFOREST_RESIN", ask, buy_amount))
+                                order_dict[ask] = order_dict.get(ask, 0) + buy_amount
                                 self.current_position += buy_amount
                         elif ask < self.mean_price - (0.25 * self.volatility):
                             buy_amount = min(
@@ -182,17 +184,18 @@ class Trader:
                                 5
                             )
                             if buy_amount > 0:   
-                                orders.append(Order("RAINFOREST_RESIN", ask, buy_amount))
+                                order_dict[ask] = order_dict.get(ask, 0) + buy_amount
                                 self.current_position += buy_amount
                 if bids != None:
                     for bid in bids: 
                         if bid > upper_bound:
                             sell_amount = min(
                                 order_depth.buy_orders[bid], 
-                                self.position_limit + self.current_position,  
+                                self.position_limit + self.current_position,
+
                             )
                             if sell_amount > 0:
-                                orders.append(Order("RAINFOREST_RESIN", bid, -sell_amount))
+                                order_dict[bid] = order_dict.get(bid, 0) - sell_amount
                                 self.current_position -= sell_amount
                         
                         
@@ -204,17 +207,17 @@ class Trader:
                                 5
                             )
                             if sell_amount > 0:
-                                orders.append(Order("RAINFOREST_RESIN", bid, -sell_amount))
+                                order_dict[bid] = order_dict.get(bid, 0) - sell_amount
                                 self.current_position -= sell_amount
                 if asks != None: 
                     for ask in asks:
                         if ask < lower_bound:
                             buy_amount = min(
                                 -order_depth.sell_orders[ask],  
-                                self.position_limit - self.current_position,   
+                                self.position_limit - self.current_position, 
                             )
                             if buy_amount > 0:
-                                orders.append(Order("RAINFOREST_RESIN", ask, buy_amount))
+                                order_dict[ask] = order_dict.get(ask, 0) + buy_amount
                                 self.current_position += buy_amount
                         elif ask < self.mean_price - (0.25 * self.volatility):
                             buy_amount = min(
@@ -223,9 +226,34 @@ class Trader:
                                 5
                             )
                             if buy_amount > 0:   
-                                orders.append(Order("RAINFOREST_RESIN", ask, buy_amount))
+                                order_dict[ask] = order_dict.get(ask, 0) + buy_amount
                                 self.current_position += buy_amount
+                
+                if self.current_position != 0:
+                    if self.current_position > 0 and abs(best_bid - self.mean_price) < 0.1 * self.volatility:  
+                        best_bid = max(order_depth.buy_orders.keys()) if order_depth.buy_orders else None
+                        if best_bid:
+                            reduce_amount = min(
+                                order_depth.buy_orders[best_bid],
+                                abs(self.current_position) - 10
+                            )
+                            if reduce_amount > 0:
+                                order_dict[best_bid] = order_dict.get(best_bid, 0) - reduce_amount
+                                self.current_position -= reduce_amount
+                    elif self.current_position < 0 and abs(best_ask -  self.mean_price) < 0.1 * self.volatility:
+                        best_ask = min(order_depth.sell_orders.keys()) if order_depth.sell_orders else None
+                        if best_ask:
+                            reduce_amount = min(
+                                -order_depth.sell_orders[best_ask],
+                                abs(self.current_position) - 10
+                            )
+                            if reduce_amount > 0:
+                                order_dict[best_ask] = order_dict.get(best_ask, 0) + reduce_amount
+                                self.current_position += reduce_amount
         
+        # Convert order_dict to orders list
+        for price, quantity in order_dict.items():
+            orders.append(Order("RAINFOREST_RESIN", price, quantity))
         result["RAINFOREST_RESIN"] = orders
         traderData = "" 
         
