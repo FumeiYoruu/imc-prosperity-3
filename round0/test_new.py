@@ -1,11 +1,9 @@
-import statistics
 import json
 from typing import List, Any
 import string
-import os
+import statistics
 
 from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
-
 
 class Logger:
     def __init__(self) -> None:
@@ -122,6 +120,7 @@ class Logger:
 
 
 logger = Logger()
+
 
 class Trader:
     def __init__(self):
