@@ -5,5 +5,5 @@
 Current Best: test_new.py\
 Performance: \
 KELP: 0 \
-RAINFOREST_RESIN: 3248 \
-Total profit: 3248
+RAINFOREST_RESIN: 3573 on website \
+Total profit: 3573 on website

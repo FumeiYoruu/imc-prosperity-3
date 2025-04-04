@@ -147,9 +147,9 @@ class Trader:
             best_ask = min(order_depth.sell_orders.keys())
             mid_price = (best_bid + best_ask) / 2
             self.price_history.append(mid_price)
-            acceptable_price = statistics.mean(self.price_history[-self.sma_window:])
+            acceptable_price = statistics.mean(self.price_history[-self.sma_window:]) if len(self.price_history) > self.sma_window else 10000
         else:
-            acceptable_price = self.price_history[-1] if self.price_history else 10
+            acceptable_price = self.price_history[-1] if self.price_history else 10000
 
         # TAKER BUY
         if order_depth.sell_orders:
@@ -176,12 +176,12 @@ class Trader:
             best_bid = max(order_depth.buy_orders.keys())
             best_ask = min(order_depth.sell_orders.keys())
 
-            if self.current_position < self.position_limit:
+            if self.current_position < self.position_limit and best_bid + 1 <= acceptable_price:
                 buy_price = best_bid + 1
                 buy_amount = min(self.quote_volume, self.position_limit - self.current_position)
                 orders.append(Order(product, buy_price, buy_amount))
 
-            if self.current_position > -self.position_limit:
+            if self.current_position > -self.position_limit and best_ask - 1 >= acceptable_price:
                 sell_price = best_ask - 1
                 sell_amount = min(self.quote_volume, self.position_limit + self.current_position)
                 orders.append(Order(product, sell_price, -sell_amount))
