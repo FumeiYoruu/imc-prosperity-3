@@ -165,12 +165,22 @@ class Trader:
         momentum = self.alpha * (t_price - t_mean_price) + self.beta * t_price_change
 
         average_gain, average_loss = 0, 0
+        gain_count, loss_count = 0, 0
 
         for i in range(max(0, len(self.price_history) - self.time_frame), len(self.price_history) - 1):
             price_change = self.price_history[i + 1] - self.price_history[i]
 
-            if(price_change > 0): average_gain += price_change
-            elif(price_change < 0): average_loss += price_change
+            if(price_change > 0):
+                average_gain += price_change
+                gain_count += 1
+            elif(price_change < 0):
+                average_loss += abs(price_change)
+                loss_count += 1
+
+        if gain_count:
+            average_gain /= gain_count
+        if loss_count:
+            average_loss /= loss_count
 
         # TODO: what if average_loss = 0?
         # relative_strength = average_gain / average_loss
@@ -179,12 +189,7 @@ class Trader:
         else:
             relative_strength = average_gain / average_loss
 
-        # TODO: what if 1 + relative_strength = 0?
-        # relative_strength_index = 100 - 100 / (1 + relative_strength)
-        if 1 + relative_strength == 0:
-            relative_strength_index = math.inf
-        else:
-            relative_strength_index = 100 - 100 / (1 + relative_strength)
+        relative_strength_index = 100 - 100 / (1 + relative_strength)
 
         if self.current_position != 0:
             self.remaining_time -= 1
