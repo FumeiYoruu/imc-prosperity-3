@@ -186,8 +186,6 @@ class Trader:
         else:
             relative_strength_index = 100 - 100 / (1 + relative_strength)
 
-        logger.print(self.remaining_time)
-
         if self.current_position != 0:
             self.remaining_time -= 1
 
@@ -208,7 +206,6 @@ class Trader:
                 self.remaining_time = self.time_threshold
 
         self.price_history.append(t_price)
-        result[product] = orders
 
         result[product] = orders
         conversions = 0
