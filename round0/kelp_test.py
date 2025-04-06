@@ -217,13 +217,15 @@ class Trader:
                 orders.append(Order(product, best_bid, -self.current_position))
         else:
             if momentum > 0 and relative_strength_index < 70:
-                count = self.position_limit * min(1, abs(momentum // self.momentum_threshold))
+                count = math.floor(self.position_limit * min(1, abs(momentum / self.momentum_threshold)))
+
                 if count > 0:
                     orders.append(Order(product, best_bid, count))
 
                     self.remaining_time = self.time_threshold
             elif momentum < 0 and relative_strength_index > 30:
-                count = self.position_limit * min(1, abs(momentum // self.momentum_threshold))
+                count = math.floor(self.position_limit * min(1, abs(momentum / self.momentum_threshold)))
+
                 if count > 0:
                     orders.append(Order(product, best_ask, -count))
 
