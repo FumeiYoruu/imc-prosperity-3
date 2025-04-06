@@ -127,6 +127,7 @@ class Trader:
         self.current_position = 0
         self.price_history = []
         self.remaining_time = 0
+        self.position_wanted = 0
 
         # parameters
         self.position_limit = 50
@@ -137,7 +138,7 @@ class Trader:
         self.time_threshold = 5
 
     def encode_trader_data(self):
-        data_dict = {"price_history": self.price_history, "remaining_time": self.remaining_time}
+        data_dict = {'price_history': self.price_history, 'remaining_time': self.remaining_time, 'position_wanted': self.position_wanted}
 
         return jsonpickle.encode(data_dict)
 
@@ -147,8 +148,9 @@ class Trader:
 
         data_dict = jsonpickle.decode(data)
 
-        self.price_history = data_dict["price_history"]
-        self.remaining_time = data_dict["remaining_time"]
+        self.price_history = data_dict['price_history']
+        self.remaining_time = data_dict['remaining_time']
+        self.position_wanted = data_dict['position_wanted']
 
     def run(self, state: TradingState):
         self.decode_trader_data(state.traderData)
@@ -213,23 +215,22 @@ class Trader:
         self.remaining_time -= 1
 
         if self.current_position > 0 and (momentum <= 0 or relative_strength_index < 50 or self.remaining_time <= 0):
-            orders.append(Order(product, best_ask, -self.current_position))
+            self.position_wanted = 0
         elif self.current_position < 0 and (momentum >= 0 or relative_strength_index > 50 or self.remaining_time <= 0):
-            orders.append(Order(product, best_bid, -self.current_position))
+            self.position_wanted = 0
         elif momentum > 0 and relative_strength_index < 70:
-            count = math.floor(self.position_limit * min(1, abs(momentum / self.momentum_threshold))) - abs(self.current_position)
-
-            if count > 0:
-                orders.append(Order(product, best_bid, count))
-
-                self.remaining_time = self.time_threshold
+            self.position_wanted = abs(math.floor(self.position_limit * min(1, abs(momentum / self.momentum_threshold))))
+            self.remaining_time = self.time_threshold
         elif momentum < 0 and relative_strength_index > 30:
-            count = math.floor(self.position_limit * min(1, abs(momentum / self.momentum_threshold))) - abs(self.current_position)
+            self.position_wanted = -abs(math.floor(self.position_limit * min(1, abs(momentum / self.momentum_threshold))))
+            self.remaining_time = self.time_threshold
 
-            if count > 0:
-                orders.append(Order(product, best_ask, -count))
+        position_diff = self.position_wanted - self.current_position
 
-                self.remaining_time = self.time_threshold
+        if position_diff > 0:
+            orders.append(Order(product, best_bid, position_diff))
+        elif position_diff < 0:
+            orders.append(Order(product, best_ask, position_diff))
 
         self.price_history.append(t_price)
 
