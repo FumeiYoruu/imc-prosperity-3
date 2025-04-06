@@ -137,10 +137,7 @@ class Trader:
         self.time_threshold = 5
 
     def encode_trader_data(self):
-        data_dict = {}
-
-        data_dict["price_history"] = self.price_history
-        data_dict["remaining_time"] = self.remaining_time
+        data_dict = {"price_history": self.price_history, "remaining_time": self.remaining_time}
 
         return jsonpickle.encode(data_dict)
 
@@ -190,10 +187,10 @@ class Trader:
         for i in range(max(0, len(self.price_history) - self.time_frame), len(self.price_history) - 1):
             price_change = self.price_history[i + 1] - self.price_history[i]
 
-            if(price_change > 0):
+            if price_change > 0:
                 average_gain += price_change
                 gain_count += 1
-            elif(price_change < 0):
+            elif price_change < 0:
                 average_loss += abs(price_change)
                 loss_count += 1
 
@@ -204,7 +201,7 @@ class Trader:
 
         # TODO: what if average_loss = 0?
         # relative_strength = average_gain / average_loss
-        if(average_loss == 0):
+        if average_loss == 0:
             relative_strength = math.inf
         else:
             relative_strength = average_gain / average_loss
