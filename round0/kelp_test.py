@@ -123,12 +123,12 @@ logger = Logger()
 
 class Trader:
     def __init__(self):
-        self.position_limit = 50
         self.current_position = 0
         self.price_history = []
         self.remaining_time = 0
 
         # parameters
+        self.position_limit = 50
         self.time_frame = 10
         self.alpha = 0.5
         self.beta = 1 - self.alpha
