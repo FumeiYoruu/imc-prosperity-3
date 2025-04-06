@@ -126,6 +126,7 @@ class Trader:
         self.position_limit = 50
         self.current_position = 0
         self.price_history = []
+        self.remaining_time = 0
 
         # parameters
         self.time_frame = 10
@@ -133,7 +134,6 @@ class Trader:
         self.beta = 1 - self.alpha
         self.momentum_threshold = 1
         self.time_threshold = 5
-        self.remaining_time = self.time_threshold
 
     def run(self, state: TradingState):
         result = {}
