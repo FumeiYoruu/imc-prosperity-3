@@ -208,28 +208,28 @@ class Trader:
 
         relative_strength_index = 100 - 100 / (1 + relative_strength)
 
-        if self.current_position != 0:
-            self.remaining_time -= 1
+        logger.print(best_bid, best_ask, t_price, t_price_change, t_mean_price, momentum, average_gain, average_loss, relative_strength, relative_strength_index)
 
-            if self.current_position > 0 and (momentum <= 0 or relative_strength_index < 50 or self.remaining_time <= 0):
-                orders.append(Order(product, best_ask, -self.current_position))
-            elif self.current_position < 0 and (momentum >= 0 or relative_strength_index > 50 or self.remaining_time <= 0):
-                orders.append(Order(product, best_bid, -self.current_position))
-        else:
-            if momentum > 0 and relative_strength_index < 70:
-                count = math.floor(self.position_limit * min(1, abs(momentum / self.momentum_threshold)))
+        self.remaining_time -= 1
 
-                if count > 0:
-                    orders.append(Order(product, best_bid, count))
+        if self.current_position > 0 and (momentum <= 0 or relative_strength_index < 50 or self.remaining_time <= 0):
+            orders.append(Order(product, best_ask, -self.current_position))
+        elif self.current_position < 0 and (momentum >= 0 or relative_strength_index > 50 or self.remaining_time <= 0):
+            orders.append(Order(product, best_bid, -self.current_position))
+        elif momentum > 0 and relative_strength_index < 70:
+            count = math.floor(self.position_limit * min(1, abs(momentum / self.momentum_threshold))) - abs(self.current_position)
 
-                    self.remaining_time = self.time_threshold
-            elif momentum < 0 and relative_strength_index > 30:
-                count = math.floor(self.position_limit * min(1, abs(momentum / self.momentum_threshold)))
+            if count > 0:
+                orders.append(Order(product, best_bid, count))
 
-                if count > 0:
-                    orders.append(Order(product, best_ask, -count))
+                self.remaining_time = self.time_threshold
+        elif momentum < 0 and relative_strength_index > 30:
+            count = math.floor(self.position_limit * min(1, abs(momentum / self.momentum_threshold))) - abs(self.current_position)
 
-                    self.remaining_time = self.time_threshold
+            if count > 0:
+                orders.append(Order(product, best_ask, -count))
+
+                self.remaining_time = self.time_threshold
 
         self.price_history.append(t_price)
 
