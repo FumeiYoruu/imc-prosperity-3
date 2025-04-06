@@ -129,7 +129,7 @@ class Trader:
 
         # parameters
         self.position_limit = 50
-        self.time_frame = 10
+        self.time_frame = 500
         self.alpha = 0.5
         self.beta = 1 - self.alpha
         self.momentum_threshold = 1
