@@ -3,6 +3,7 @@ import statistics
 from typing import List, Any
 from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
 import math
+import jsonpickle
 
 
 class Logger:
@@ -135,7 +136,26 @@ class Trader:
         self.momentum_threshold = 1
         self.time_threshold = 5
 
+    def encode_trader_data(self):
+        data_dict = {}
+
+        data_dict["price_history"] = self.price_history
+        data_dict["remaining_time"] = self.remaining_time
+
+        return jsonpickle.encode(data_dict)
+
+    def decode_trader_data(self, data):
+        if not data:
+            return
+
+        data_dict = jsonpickle.decode(data)
+
+        self.price_history = data_dict["price_history"]
+        self.remaining_time = data_dict["remaining_time"]
+
     def run(self, state: TradingState):
+        self.decode_trader_data(state.traderData)
+
         result = {}
         product = "KELP"
         orders: List[Order] = []
@@ -216,6 +236,6 @@ class Trader:
 
         result[product] = orders
         conversions = 0
-        trader_data = ""
+        trader_data = self.encode_trader_data()
         logger.flush(state, result, conversions, trader_data)
         return result, conversions, trader_data
