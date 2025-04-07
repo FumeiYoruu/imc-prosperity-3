@@ -128,13 +128,14 @@ class Trader:
         self.price_history = []
         self.remaining_time = 0
         self.position_wanted = 0
+        self.spread_history = []
 
         # parameters
         self.position_limit = 50
         self.time_frame = 200
-        self.alpha = 0.01
+        self.alpha = 0.1
         self.beta = 1 - self.alpha
-        self.momentum_threshold = 0.25
+        self.momentum_threshold = 0.1
         self.time_threshold = 50
 
     def encode_trader_data(self):
@@ -163,23 +164,28 @@ class Trader:
 
         if product in state.position:
             self.current_position = state.position[product]
-
         if order_depth.buy_orders and order_depth.sell_orders:
             best_bid = max(order_depth.buy_orders.keys())
             best_ask = min(order_depth.sell_orders.keys())
             t_price = (best_bid + best_ask) / 2
+            spread = abs(best_ask - best_bid)
         else:
             # TODO: Decide what to do here
             assert False, "price calculation failed"
 
-        if self.price_history:
+        if len(self.price_history) >= 2:
             t_price_change = t_price - self.price_history[-1]
             t_mean_price = statistics.mean(self.price_history[-self.time_frame:])
+            t_vol = statistics.stdev(self.price_history[-self.time_frame:])
+            self.alpha = t_vol * 150 / t_mean_price
+            self.beta = 1 - self.alpha
         else:
             t_price_change = 0
             t_mean_price = 0
             # TODO: Decide what to do here
             # assert False, "no price history"
+        if self.spread_history:
+            t_mean_spread = statistics.mean(self.spread_history[-self.time_frame:])
 
         momentum = self.alpha * (t_price - t_mean_price) + self.beta * t_price_change
 
@@ -229,7 +235,7 @@ class Trader:
 
         if position_diff > 0:
             if(self.position_wanted == 0):
-                orders.append(Order(product, best_ask - 3, position_diff))
+                orders.append(Order(product, round(best_ask - t_mean_spread), position_diff))
                 self.current_position = self.position_wanted
             else:
                 orders.append(Order(product, best_bid, position_diff))
@@ -238,7 +244,7 @@ class Trader:
 
         elif position_diff < 0:
                 if(self.position_wanted == 0):
-                    orders.append(Order(product, best_bid + 3, position_diff))
+                    orders.append(Order(product, round(best_bid + t_mean_spread), position_diff))
                     self.current_position = self.position_wanted
                 else:
                     orders.append(Order(product, best_ask, position_diff))
@@ -246,6 +252,7 @@ class Trader:
 
 
         self.price_history.append(t_price)
+        self.spread_history.append(spread)
 
         result[product] = orders
         conversions = 0
