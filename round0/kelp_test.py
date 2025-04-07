@@ -131,11 +131,11 @@ class Trader:
 
         # parameters
         self.position_limit = 50
-        self.time_frame = 500
-        self.alpha = 0.5
+        self.time_frame = 200
+        self.alpha = 0.01
         self.beta = 1 - self.alpha
-        self.momentum_threshold = 1
-        self.time_threshold = 5
+        self.momentum_threshold = 0.25
+        self.time_threshold = 50
 
     def encode_trader_data(self):
         data_dict = {'price_history': self.price_history, 'remaining_time': self.remaining_time, 'position_wanted': self.position_wanted}
@@ -228,9 +228,9 @@ class Trader:
         position_diff = self.position_wanted - self.current_position
 
         if position_diff > 0:
-            orders.append(Order(product, best_bid, position_diff))
+            orders.append(Order(product, best_ask - 2, position_diff))
         elif position_diff < 0:
-            orders.append(Order(product, best_ask, position_diff))
+            orders.append(Order(product, best_bid + 2, position_diff))
 
         self.price_history.append(t_price)
 
