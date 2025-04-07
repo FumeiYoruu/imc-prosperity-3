@@ -3,10 +3,10 @@
 ### Rainforest Resin
 file: resin.py \
 Profit summary: \
-Round 1 day -2: 2,304 \
-Round 1 day -1: 2,306 \
-Round 1 day 0: 1,973 \
-Total profit: 6,583
+Round 1 day -2: 15,876 \
+Round 1 day -1: 16,968 \
+Round 1 day 0: 15,230 \
+Total profit: 48,074
 
 ### Kelp
 file: kelp.py \
