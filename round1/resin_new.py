@@ -120,16 +120,15 @@ class Logger:
 
 
 logger = Logger()
-
-
 class Trader:
     def __init__(self):
-        self.threshold = 0.1
-        self.quote_volume = 20
-        self.sma_window = 50
+        self.threshold = 0.18
+        self.quote_volume = 30
+        self.sma_window = 60
         self.spread = 7
-
         self.position_limit = 50
+        self.vol_window = 50
+
         self.price_history = []
         self.current_position = 0
 
@@ -148,15 +147,34 @@ class Trader:
             best_ask = min(order_depth.sell_orders.keys())
             mid_price = (best_bid + best_ask) / 2
             self.price_history.append(mid_price)
-            acceptable_price = statistics.mean(self.price_history[-self.sma_window:]) if len(self.price_history) > self.sma_window else 10000
+            acceptable_price = (
+                statistics.mean(self.price_history[-self.sma_window:])
+                if len(self.price_history) > self.sma_window
+                else 10000
+            )
         else:
-            acceptable_price = self.price_history[-1] if self.price_history else 10000
+            acceptable_price = (
+                self.price_history[-1] if self.price_history else 10000
+            )
+
+        if len(self.price_history) >= self.vol_window:
+            recent_prices = self.price_history[-self.vol_window:]
+            stdev = statistics.pstdev(recent_prices)
+            if stdev < 1.0:
+                local_threshold = self.threshold / 2
+                local_spread = max(1, self.spread // 2)
+            else:
+                local_threshold = self.threshold
+                local_spread = self.spread
+        else:
+            local_threshold = self.threshold
+            local_spread = self.spread
 
         # TAKER BUY
         if order_depth.sell_orders:
             best_ask = min(order_depth.sell_orders.keys())
             best_ask_volume = order_depth.sell_orders[best_ask]
-            if best_ask < acceptable_price - self.threshold:
+            if best_ask < acceptable_price - local_threshold:
                 buy_amount = min(-best_ask_volume, self.position_limit - self.current_position)
                 if buy_amount > 0:
                     orders.append(Order(product, best_ask, buy_amount))
@@ -166,7 +184,7 @@ class Trader:
         if order_depth.buy_orders:
             best_bid = max(order_depth.buy_orders.keys())
             best_bid_volume = order_depth.buy_orders[best_bid]
-            if best_bid > acceptable_price + self.threshold:
+            if best_bid > acceptable_price + local_threshold:
                 sell_amount = min(best_bid_volume, self.position_limit + self.current_position)
                 if sell_amount > 0:
                     orders.append(Order(product, best_bid, -sell_amount))
@@ -178,12 +196,14 @@ class Trader:
             best_ask = min(order_depth.sell_orders.keys())
             mid_price = (best_bid + best_ask) / 2
 
-            my_bid = mid_price - self.spread / 2
-            my_ask = mid_price + self.spread / 2
+            my_bid = mid_price - local_spread / 2
+            my_ask = mid_price + local_spread / 2
 
             if self.current_position < self.position_limit:
                 buy_volume = min(self.quote_volume, self.position_limit - self.current_position)
+                # 这里用 int() 避免出现非整数价
                 orders.append(Order(product, int(my_bid), buy_volume))
+
             if self.current_position > -self.position_limit:
                 sell_volume = min(self.quote_volume, self.position_limit + self.current_position)
                 orders.append(Order(product, int(my_ask), -sell_volume))
@@ -191,5 +211,6 @@ class Trader:
         result[product] = orders
         conversions = 0
         traderData = ""
+
         logger.flush(state, result, conversions, traderData)
         return result, conversions, traderData
