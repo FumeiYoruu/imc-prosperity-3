@@ -153,7 +153,7 @@ class Trader:
         self.position_wanted = data_dict['position_wanted']
 
     def run(self, state: TradingState):
-        self.decode_trader_data(state.traderData)
+        #self.decode_trader_data(state.traderData)
 
         result = {}
         product = "KELP"
@@ -214,9 +214,9 @@ class Trader:
 
         self.remaining_time -= 1
 
-        if self.current_position > 0 and (momentum <= 0 or relative_strength_index < 50 or self.remaining_time <= 0):
+        if self.current_position > 0 and (momentum <= 0 or relative_strength_index < 50 or relative_strength_index > 70 or self.remaining_time <= 0):
             self.position_wanted = 0
-        elif self.current_position < 0 and (momentum >= 0 or relative_strength_index > 50 or self.remaining_time <= 0):
+        elif self.current_position < 0 and (momentum >= 0 or relative_strength_index > 50 or relative_strength_index < 30 or self.remaining_time <= 0):
             self.position_wanted = 0
         elif momentum > 0 and relative_strength_index < 70:
             self.position_wanted = abs(math.floor(self.position_limit * min(1, abs(momentum / self.momentum_threshold))))
@@ -228,14 +228,28 @@ class Trader:
         position_diff = self.position_wanted - self.current_position
 
         if position_diff > 0:
-            orders.append(Order(product, best_ask - 2, position_diff))
+            if(self.position_wanted == 0):
+                orders.append(Order(product, best_ask - 3, position_diff))
+                self.current_position = self.position_wanted
+            else:
+                orders.append(Order(product, best_bid, position_diff))
+                self.current_position = self.position_wanted
+
+
         elif position_diff < 0:
-            orders.append(Order(product, best_bid + 2, position_diff))
+                if(self.position_wanted == 0):
+                    orders.append(Order(product, best_bid + 3, position_diff))
+                    self.current_position = self.position_wanted
+                else:
+                    orders.append(Order(product, best_ask, position_diff))
+                    self.current_position = self.position_wanted
+
 
         self.price_history.append(t_price)
 
         result[product] = orders
         conversions = 0
-        trader_data = self.encode_trader_data()
+        #trader_data = self.encode_trader_data()
+        trader_data = ""
         logger.flush(state, result, conversions, trader_data)
         return result, conversions, trader_data
