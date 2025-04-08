@@ -15,3 +15,12 @@ Round 1 day -2: 15,659 \
 Round 1 day -1: 15,714 \
 Round 1 day 0: 14,989 \
 Total profit: 46,362
+
+
+### SQUID INK
+file: \
+Profit summary: \
+Round 1 day -2:  \
+Round 1 day -1:  \
+Round 1 day 0:  \
+Total profit: 
