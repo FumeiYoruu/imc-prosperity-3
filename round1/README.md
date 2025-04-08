@@ -18,9 +18,9 @@ Total profit: 46,362
 
 
 ### SQUID INK
-file: squid.py\
+file: squidMomentum.py\
 Profit summary: \
-Round 1 day -2: -519 \
-Round 1 day -1: 18\
-Round 1 day 0:  5,121\
-Total profit: 4,620
+Round 1 day -2: -306 \
+Round 1 day -1: 2,096\
+Round 1 day 0:  6,735\
+Total profit: 8,525
