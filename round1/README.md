@@ -1,12 +1,12 @@
 # Round 1
 ## Results on BT
 ### Rainforest Resin
-file: resin.py \
+file: resinBest.py \
 Profit summary: \
-Round 1 day -2: 15,876 \
-Round 1 day -1: 16,968 \
-Round 1 day 0: 15,230 \
-Total profit: 48,074
+Round 1 day -2: 17,960 \
+Round 1 day -1: 16,990 \
+Round 1 day 0: 17,318 \
+Total profit: 52,268
 
 ### Kelp
 file: kelp.py \
