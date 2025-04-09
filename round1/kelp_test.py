@@ -133,8 +133,8 @@ class Trader:
 
         # parameters
         self.position_limit = 50
-        self.time_frame = 20
-        self.z_score_threshold = 2
+        self.time_frame = 200
+        self.z_score_threshold = 0.55
         self.time_threshold = 100
 
     def encode_trader_data(self):
@@ -181,7 +181,7 @@ class Trader:
             t_return = 0
             self.return_history.append(0)
 
-        if len(self.return_history) >= self.time_frame:
+        if len(self.return_history) >= 50:
             mean_return = statistics.mean(self.return_history[-self.time_frame:])
             std_return = statistics.stdev(self.return_history[-self.time_frame:])
             z_score = (t_return - mean_return) / std_return if std_return != 0 else 0
@@ -199,10 +199,10 @@ class Trader:
 
         self.remaining_time -= 1
 
-        #if self.current_position > 0 and (z_score >= 0.5):
-            #self.position_wanted = 0
-        #elif self.current_position < 0 and (z_score <= -0.5 ):
-            #self.position_wanted = 0
+        # if self.current_position > 0 and (z_score >= 0.5):
+        #     self.position_wanted = 0
+        # elif self.current_position < 0 and (z_score <= -0.5 ):
+        #     self.position_wanted = 0
         if z_score < -self.z_score_threshold:
             self.position_wanted = self.position_limit
             self.remaining_time = self.time_threshold
@@ -213,14 +213,14 @@ class Trader:
         position_diff = self.position_wanted - self.current_position
 
         if position_diff > 0:
-            #if self.position_wanted == 0:
-                #orders.append(Order(product, round(best_ask - t_mean_spread), position_diff))
-            #else:
+            if self.position_wanted == 0:
+                orders.append(Order(product, round(best_ask - t_mean_spread), position_diff))
+            else:
                 orders.append(Order(product, best_bid + 1, position_diff))
         elif position_diff < 0:
-            #if self.position_wanted == 0:
-                #orders.append(Order(product, round(best_bid + t_mean_spread), position_diff))
-            #else:
+            if self.position_wanted == 0:
+                orders.append(Order(product, round(best_bid + t_mean_spread), position_diff))
+            else:
                 orders.append(Order(product, best_ask - 1, position_diff))
 
         #self.current_position = self.position_wanted
