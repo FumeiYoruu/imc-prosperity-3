@@ -26,4 +26,4 @@ Round 1 day -2: -306 \
 Round 1 day -1: 2,096\
 Round 1 day 0:  6,735\
 Total profit: 8,525 \
-On Website: 300
+On Website: 312
