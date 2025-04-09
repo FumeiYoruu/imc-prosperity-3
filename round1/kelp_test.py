@@ -134,7 +134,7 @@ class Trader:
         # parameters
         self.position_limit = 50
         self.time_frame = 200
-        self.z_score_threshold = 1.5
+        self.z_score_threshold = 1
         self.time_threshold = 100
 
     def encode_trader_data(self):
@@ -156,6 +156,7 @@ class Trader:
         self.position_wanted = data_dict['position_wanted']
 
     def run(self, state: TradingState):
+        #self.decode_trader_data(state.traderData)
         result = {}
         product = "KELP"
         orders: List[Order] = []
@@ -198,10 +199,10 @@ class Trader:
 
         self.remaining_time -= 1
 
-        # if self.current_position > 0 and (z_score >= 1):
-        #     self.position_wanted = 0
-        # elif self.current_position < 0 and (z_score <= -1 ):
-        #     self.position_wanted = 0
+        if self.current_position > 0 and (z_score >= 0.5):
+            self.position_wanted = 0
+        elif self.current_position < 0 and (z_score <= -0.5 ):
+            self.position_wanted = 0
         if z_score < -self.z_score_threshold:
             self.position_wanted = self.position_limit
             self.remaining_time = self.time_threshold
@@ -215,17 +216,17 @@ class Trader:
             if self.position_wanted == 0:
                 orders.append(Order(product, round(best_ask - t_mean_spread), position_diff))
             else:
-                orders.append(Order(product, best_bid, position_diff))
+                orders.append(Order(product, best_bid + 1, position_diff))
         elif position_diff < 0:
             if self.position_wanted == 0:
                 orders.append(Order(product, round(best_bid + t_mean_spread), position_diff))
             else:
-                orders.append(Order(product, best_ask, position_diff))
+                orders.append(Order(product, best_ask - 1, position_diff))
 
         #self.current_position = self.position_wanted
         self.price_history.append(t_price)
         self.spread_history.append(spread)
-
+        #trader_data = self.encode_trader_data()
         result[product] = orders
         conversions = 0
         trader_data = ""
