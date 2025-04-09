@@ -134,7 +134,7 @@ class Trader:
         # parameters
         self.position_limit = 50
         self.time_frame = 20
-        self.z_score_threshold = 1
+        self.z_score_threshold = 2
         self.time_threshold = 100
 
     def encode_trader_data(self):
@@ -199,10 +199,10 @@ class Trader:
 
         self.remaining_time -= 1
 
-        if self.current_position > 0 and (z_score >= 0.5):
-            self.position_wanted = 0
-        elif self.current_position < 0 and (z_score <= -0.5 ):
-            self.position_wanted = 0
+        #if self.current_position > 0 and (z_score >= 0.5):
+            #self.position_wanted = 0
+        #elif self.current_position < 0 and (z_score <= -0.5 ):
+            #self.position_wanted = 0
         if z_score < -self.z_score_threshold:
             self.position_wanted = self.position_limit
             self.remaining_time = self.time_threshold
