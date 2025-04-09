@@ -134,7 +134,7 @@ class Trader:
         # parameters
         self.position_limit = 50
         self.time_frame = 200
-        self.z_score_threshold = 0.55
+        self.z_score_threshold = 0.5
         self.time_threshold = 100
 
     def encode_trader_data(self):
