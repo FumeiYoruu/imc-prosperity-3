@@ -11,10 +11,10 @@ Total profit: 52,268
 ### Kelp
 file: kelp.py \
 Profit summary: \
-Round 1 day -2: 15,659 \
-Round 1 day -1: 15,714 \
-Round 1 day 0: 14,989 \
-Total profit: 46,362
+Round 1 day -2: 3,135 \
+Round 1 day -1: 2,562 \
+Round 1 day 0: 2,095 \
+Total profit: 7,792
 
 
 ### SQUID INK
