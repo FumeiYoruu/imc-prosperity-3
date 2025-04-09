@@ -11,7 +11,7 @@ On Website: 1620
 
 ### Kelp
 file: kelp_test.py \
-Profit summary: \ 
+Profit summary: \
 Round 1 day -2: 4,524 \
 Round 1 day -1: 3,959 \
 Round 1 day 0: 3,465 \
