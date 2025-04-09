@@ -134,7 +134,7 @@ class Trader:
         # parameters
         self.position_limit = 50
         self.time_frame = 200
-        self.z_score_threshold = 1
+        self.z_score_threshold = 0.5
         self.time_threshold = 100
 
     def encode_trader_data(self):
@@ -213,14 +213,14 @@ class Trader:
         position_diff = self.position_wanted - self.current_position
 
         if position_diff > 0:
-            if self.position_wanted == 0:
-                orders.append(Order(product, round(best_ask - t_mean_spread), position_diff))
-            else:
+            #if self.position_wanted == 0:
+                #orders.append(Order(product, round(best_ask - t_mean_spread), position_diff))
+            #else:
                 orders.append(Order(product, best_bid + 1, position_diff))
         elif position_diff < 0:
-            if self.position_wanted == 0:
-                orders.append(Order(product, round(best_bid + t_mean_spread), position_diff))
-            else:
+            #if self.position_wanted == 0:
+                #orders.append(Order(product, round(best_bid + t_mean_spread), position_diff))
+            #else:
                 orders.append(Order(product, best_ask - 1, position_diff))
 
         #self.current_position = self.position_wanted
