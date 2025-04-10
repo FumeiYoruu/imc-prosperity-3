@@ -131,7 +131,7 @@ class Trader:
         self.history = []
 
         self.window = 30
-        self.std_threshold = 1.0
+        self.std_threshold = 0.8
         self.momentum_threshold = 0.8
 
     def run(self, state: TradingState):
