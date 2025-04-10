@@ -61,12 +61,14 @@ class Logger:
         compressed = []
         for listing in listings.values():
             compressed.append([listing.symbol, listing.product, listing.denomination])
+
         return compressed
 
     def compress_order_depths(self, order_depths: dict[Symbol, OrderDepth]) -> dict[Symbol, list[Any]]:
         compressed = {}
         for symbol, order_depth in order_depths.items():
             compressed[symbol] = [order_depth.buy_orders, order_depth.sell_orders]
+
         return compressed
 
     def compress_trades(self, trades: dict[Symbol, list[Trade]]) -> list[list[Any]]:
@@ -83,6 +85,7 @@ class Logger:
                         trade.timestamp,
                     ]
                 )
+
         return compressed
 
     def compress_observations(self, observations: Observation) -> list[Any]:
@@ -97,6 +100,7 @@ class Logger:
                 observation.sugarPrice,
                 observation.sunlightIndex,
             ]
+
         return [observations.plainValueObservations, conversion_observations]
 
     def compress_orders(self, orders: dict[Symbol, list[Order]]) -> list[list[Any]]:
@@ -104,6 +108,7 @@ class Logger:
         for arr in orders.values():
             for order in arr:
                 compressed.append([order.symbol, order.price, order.quantity])
+
         return compressed
 
     def to_json(self, value: Any) -> str:
@@ -112,6 +117,7 @@ class Logger:
     def truncate(self, value: str, max_length: int) -> str:
         if len(value) <= max_length:
             return value
+
         return value[: max_length - 3] + "..."
 
 
@@ -128,12 +134,12 @@ class Trader:
         self.std_threshold = 1.0
         self.momentum_threshold = 0.5
         self.weak_momentum_threshold = 0.2
+        self.slope_threshold = 0.01
 
         self.entry_price = None
         self.entry_timestamp = None
         self.max_hold_time = 50_000
 
-    # change to ema for momentum now
     def ema(self, prices, span):
         alpha = 2 / (span + 1)
         ema_vals = [prices[0]]
@@ -163,33 +169,34 @@ class Trader:
         recent = self.history[-self.window:]
         rolling_std = np.std(recent)
 
-        # ema
         ema_short = self.ema(recent, span=5)
         ema_long = self.ema(recent, span=15)
         momentum = ema_short - ema_long
 
+        x = np.arange(len(recent))
+        slope = np.polyfit(x, recent, 1)[0]
+        trend_ok = abs(slope) > self.slope_threshold
+
         pos = state.position.get(product, 0)
 
-        # initialize
+
+        # mysterious shit block
         if pos != 0 and self.entry_timestamp is None:
             self.entry_timestamp = state.timestamp
             self.entry_price = mid_price
-
         if pos == 0:
             self.entry_price = None
             self.entry_timestamp = None
-
-        # 一坨止损平仓, works somehow 但是在website上不明显
         if pos != 0 and self.entry_timestamp is not None:
             held_time = state.timestamp - self.entry_timestamp
             if held_time > self.max_hold_time:
                 orders.append(Order(product, best_bid if pos > 0 else best_ask, -pos))
-        elif momentum < -self.momentum_threshold and pos > 0:
+        elif trend_ok and momentum < -self.momentum_threshold and pos > 0:
             bid_volume = order_depth.buy_orders.get(best_bid, 0)
             volume = min(self.volume, bid_volume, pos)
             if volume > 0:
                 orders.append(Order(product, best_bid, -volume))
-        elif momentum > self.momentum_threshold and pos < 0:
+        elif trend_ok and momentum > self.momentum_threshold and pos < 0:
             ask_volume = order_depth.sell_orders.get(best_ask, 0)
             volume = min(self.volume, ask_volume, -pos)
             if volume > 0:
@@ -205,9 +212,9 @@ class Trader:
                 volume = min(self.volume, ask_volume, -pos)
                 if volume > 0:
                     orders.append(Order(product, best_ask, volume))
-
-        # momentum trading
-        if rolling_std > self.std_threshold:
+                    
+        # ema momentum trading
+        if trend_ok and rolling_std > self.std_threshold:
             if momentum > self.momentum_threshold and pos < self.position_limit:
                 ask_volume = order_depth.sell_orders.get(best_ask, 0)
                 volume = min(self.volume, ask_volume, self.position_limit - pos)
