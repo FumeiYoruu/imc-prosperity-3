@@ -8,7 +8,6 @@ import math
 
 class Product:
     RAINFOREST_RESIN = "RAINFOREST_RESIN"
-    KELP = "KELP"
     SQUID_INK = "SQUID_INK"
 
 
@@ -23,17 +22,7 @@ PARAMS = {
         "default_edge": 4,
         "soft_position_limit": 50,
     },
-    Product.KELP: {
-        "take_width": 1,
-        "clear_width": 1,
-        "prevent_adverse": True,
-        "adverse_volume": 20,
-        "reversion_beta": -0.229,
-        "disregard_edge": 1,
-        "join_edge": 0,
-        "default_edge": 1,
-    },
-    Product.INK: {
+    Product.SQUID_INK: {
         "take_width": 1,
         "clear_width": 1,
         "prevent_adverse": True,
@@ -52,7 +41,7 @@ class Trader:
             params = PARAMS
         self.params = params
 
-        self.LIMIT = {Product.RAINFOREST_RESIN: 0, Product.KELP: 0, Product.SQUID_INK: 50}
+        self.LIMIT = {Product.RAINFOREST_RESIN: 0, Product.SQUID_INK: 50}
 
     def take_best_orders(
         self,
@@ -168,7 +157,7 @@ class Trader:
 
         return buy_order_volume, sell_order_volume
 
-    def KELP_fair_value(self, order_depth: OrderDepth, traderObject) -> float:
+    def SQUID_INK_fair_value(self, order_depth: OrderDepth, traderObject) -> float:
         if len(order_depth.sell_orders) != 0 and len(order_depth.buy_orders) != 0:
             best_ask = min(order_depth.sell_orders.keys())
             best_bid = max(order_depth.buy_orders.keys())
@@ -176,34 +165,34 @@ class Trader:
                 price
                 for price in order_depth.sell_orders.keys()
                 if abs(order_depth.sell_orders[price])
-                >= self.params[Product.KELP]["adverse_volume"]
+                >= self.params[Product.SQUID_INK]["adverse_volume"]
             ]
             filtered_bid = [
                 price
                 for price in order_depth.buy_orders.keys()
                 if abs(order_depth.buy_orders[price])
-                >= self.params[Product.KELP]["adverse_volume"]
+                >= self.params[Product.SQUID_INK]["adverse_volume"]
             ]
             mm_ask = min(filtered_ask) if len(filtered_ask) > 0 else None
             mm_bid = max(filtered_bid) if len(filtered_bid) > 0 else None
             if mm_ask == None or mm_bid == None:
-                if traderObject.get("KELP_last_price", None) == None:
+                if traderObject.get("SQUID_INK_last_price", None) == None:
                     mmmid_price = (best_ask + best_bid) / 2
                 else:
-                    mmmid_price = traderObject["KELP_last_price"]
+                    mmmid_price = traderObject["SQUID_INK_last_price"]
             else:
                 mmmid_price = (mm_ask + mm_bid) / 2
 
-            if traderObject.get("KELP_last_price", None) != None:
-                last_price = traderObject["KELP_last_price"]
+            if traderObject.get("SQUID_INK_last_price", None) != None:
+                last_price = traderObject["SQUID_INK_last_price"]
                 last_returns = (mmmid_price - last_price) / last_price
                 pred_returns = (
-                    last_returns * self.params[Product.KELP]["reversion_beta"]
+                    last_returns * self.params[Product.SQUID_INK]["reversion_beta"]
                 )
                 fair = mmmid_price + (mmmid_price * pred_returns)
             else:
                 fair = mmmid_price
-            traderObject["KELP_last_price"] = mmmid_price
+            traderObject["SQUID_INK_last_price"] = mmmid_price
             return fair
         return None
 
@@ -368,52 +357,6 @@ class Trader:
             )
             result[Product.RAINFOREST_RESIN] = (
                 amethyst_take_orders + amethyst_clear_orders + amethyst_make_orders
-            )
-
-        if Product.KELP in self.params and Product.KELP in state.order_depths:
-            KELP_position = (
-                state.position[Product.KELP]
-                if Product.KELP in state.position
-                else 0
-            )
-            KELP_fair_value = self.KELP_fair_value(
-                state.order_depths[Product.KELP], traderObject
-            )
-            KELP_take_orders, buy_order_volume, sell_order_volume = (
-                self.take_orders(
-                    Product.KELP,
-                    state.order_depths[Product.KELP],
-                    KELP_fair_value,
-                    self.params[Product.KELP]["take_width"],
-                    KELP_position,
-                    self.params[Product.KELP]["prevent_adverse"],
-                    self.params[Product.KELP]["adverse_volume"],
-                )
-            )
-            KELP_clear_orders, buy_order_volume, sell_order_volume = (
-                self.clear_orders(
-                    Product.KELP,
-                    state.order_depths[Product.KELP],
-                    KELP_fair_value,
-                    self.params[Product.KELP]["clear_width"],
-                    KELP_position,
-                    buy_order_volume,
-                    sell_order_volume,
-                )
-            )
-            KELP_make_orders, _, _ = self.make_orders(
-                Product.KELP,
-                state.order_depths[Product.KELP],
-                KELP_fair_value,
-                KELP_position,
-                buy_order_volume,
-                sell_order_volume,
-                self.params[Product.KELP]["disregard_edge"],
-                self.params[Product.KELP]["join_edge"],
-                self.params[Product.KELP]["default_edge"],
-            )
-            result[Product.KELP] = (
-                KELP_take_orders + KELP_clear_orders + KELP_make_orders
             )
 
         if Product.SQUID_INK in self.params and Product.SQUID_INK in state.order_depths:
