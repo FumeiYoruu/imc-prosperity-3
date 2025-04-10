@@ -20,7 +20,7 @@ PARAMS = {
         "disregard_edge": 1,  # disregards orders for joining or pennying within this value from fair
         "join_edge": 2,  # joins orders within this edge
         "default_edge": 4,
-        "soft_position_limit": 25,
+        "soft_position_limit": 50,
     },
     Product.KELP: {
         "take_width": 1,
