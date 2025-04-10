@@ -25,7 +25,7 @@ PARAMS = {
     },
     Product.KELP: {
         "take_width": 1,
-        "clear_width": 1,
+        "clear_width": 0,
         "prevent_adverse": True,
         "adverse_volume": 20,
         "reversion_beta": -0.229,
