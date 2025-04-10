@@ -177,8 +177,6 @@ class Trader:
             t_price_change = t_price - self.price_history[-1]
             t_mean_price = statistics.mean(self.price_history[-self.time_frame:])
             t_vol = statistics.stdev(self.price_history[-self.time_frame:])
-            self.alpha = t_vol * 150 / t_mean_price
-            self.beta = 1 - self.alpha
         else:
             t_price_change = 0
             t_mean_price = 0
