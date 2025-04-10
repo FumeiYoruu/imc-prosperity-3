@@ -27,5 +27,5 @@ Round 1 day -1: 2,096\
 Round 1 day 0:  6,735\
 Total profit: 8,525 \
 On Website: 312 \
-**Update: squidBest.py has 835 on website**
+**Update: squidBest.py has 887 on website**
 
