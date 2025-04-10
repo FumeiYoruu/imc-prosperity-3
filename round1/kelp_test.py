@@ -215,7 +215,7 @@ class Trader:
         #     self.position_wanted = 0
         # elif self.current_position < 0 and (z_score <= -0.5 ):
         #     self.position_wanted = 0
-        z_scaled = min(1, abs(z_score) / 2)  # normalize z-score
+        z_scaled = min(1, abs(z_score) / 5)  # normalize z-score
         position = int(self.position_limit * z_scaled)
         self.position_wanted = position if z_score < 0 else -position
         self.remaining_time = self.time_threshold
