@@ -136,7 +136,7 @@ class Trader:
         self.alpha = 0.1
         self.beta = 1 - self.alpha
         self.momentum_threshold = 0.1
-        self.time_threshold = 50
+        self.time_threshold = 100
 
     def encode_trader_data(self):
         data_dict = {'price_history': self.price_history, 'remaining_time': self.remaining_time, 'position_wanted': self.position_wanted}
@@ -218,31 +218,25 @@ class Trader:
 
         self.remaining_time -= 1
 
-        if self.current_position > 0 and (momentum <= 0 or relative_strength_index < 50 or relative_strength_index > 70 or self.remaining_time <= 0):
+        if self.current_position > 0 and (momentum <= 0 or self.remaining_time <= 0):
             self.position_wanted = 0
-        elif self.current_position < 0 and (momentum >= 0 or relative_strength_index > 50 or relative_strength_index < 30 or self.remaining_time <= 0):
+        elif self.current_position < 0 and (momentum >= 0 or self.remaining_time <= 0):
             self.position_wanted = 0
-        elif momentum > 0 and relative_strength_index < 70:
+        elif momentum > 0:
             self.position_wanted = abs(math.floor(self.position_limit * min(1, abs(momentum / self.momentum_threshold))))
             self.remaining_time = self.time_threshold
-        elif momentum < 0 and relative_strength_index > 30:
+        elif momentum < 0:
             self.position_wanted = -abs(math.floor(self.position_limit * min(1, abs(momentum / self.momentum_threshold))))
             self.remaining_time = self.time_threshold
 
         position_diff = self.position_wanted - self.current_position
 
         if position_diff > 0:
-            if(self.position_wanted == 0):
-                orders.append(Order(product, round(best_ask - t_mean_spread), position_diff))
-            else:
-                orders.append(Order(product, best_bid, position_diff))
+            orders.append(Order(product, round(best_ask - 2), position_diff))
 
 
         elif position_diff < 0:
-                if(self.position_wanted == 0):
-                    orders.append(Order(product, round(best_bid + t_mean_spread), position_diff))
-                else:
-                    orders.append(Order(product, best_ask, position_diff))
+            orders.append(Order(product, round(best_bid + 2), position_diff))
 
 
         self.price_history.append(t_price)
