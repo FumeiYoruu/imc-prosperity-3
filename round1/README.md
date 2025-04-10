@@ -28,4 +28,5 @@ Round 1 day 0:  6,735\
 Total profit: 8,525 \
 On Website: 312 \
 ** Update: test2.py has 341 on website **
+**Update: test1.py has 392 on website**
 
