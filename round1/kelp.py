@@ -236,19 +236,15 @@ class Trader:
         if position_diff > 0:
             if(self.position_wanted == 0):
                 orders.append(Order(product, round(best_ask - t_mean_spread), position_diff))
-                self.current_position = self.position_wanted
             else:
                 orders.append(Order(product, best_bid, position_diff))
-                self.current_position = self.position_wanted
 
 
         elif position_diff < 0:
                 if(self.position_wanted == 0):
                     orders.append(Order(product, round(best_bid + t_mean_spread), position_diff))
-                    self.current_position = self.position_wanted
                 else:
                     orders.append(Order(product, best_ask, position_diff))
-                    self.current_position = self.position_wanted
 
 
         self.price_history.append(t_price)

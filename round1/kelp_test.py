@@ -136,6 +136,10 @@ class Trader:
         self.time_frame = 200
         self.z_score_threshold = 0.5
         self.time_threshold = 100
+        self.alpha = 0.1
+        self.beta = 1 - self.alpha
+        self.position_offset = 0
+        self.momentum_threshold = 1
 
     def encode_trader_data(self):
         data_dict = {
@@ -189,6 +193,14 @@ class Trader:
             mean_return = 0
             std_return = 1
             z_score = 0
+        if (len(self.price_history) >= 2):
+            t_price_change = t_price - self.price_history[-1]
+            t_mean_price = statistics.mean(self.price_history[-self.time_frame:])
+            momentum = self.alpha * (t_price - t_mean_price) + self.beta * t_price_change
+            if(abs(momentum) >= 0.5):
+                self.position_offset = int(20 * min(1, momentum / self.momentum_threshold))
+            else:
+                self.position_offset = 0
 
         if self.spread_history:
             t_mean_spread = statistics.mean(self.spread_history[-self.time_frame:])
@@ -204,10 +216,10 @@ class Trader:
         # elif self.current_position < 0 and (z_score <= -0.5 ):
         #     self.position_wanted = 0
         if z_score < -self.z_score_threshold:
-            self.position_wanted = self.position_limit
+            self.position_wanted = min(self.position_limit + self.position_offset, self.position_limit)
             self.remaining_time = self.time_threshold
         elif z_score > self.z_score_threshold:
-            self.position_wanted = -self.position_limit
+            self.position_wanted = max(-self.position_limit, -self.position_limit + self.position_offset)
             self.remaining_time = self.time_threshold
 
         position_diff = self.position_wanted - self.current_position
