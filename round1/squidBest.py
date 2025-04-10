@@ -131,7 +131,7 @@ class Trader:
         self.history = []
 
         self.window = 30
-        self.std_threshold = 1.0
+        self.std_threshold = 1.4
         self.momentum_threshold = 0.5
         self.weak_momentum_threshold = 0.2
         self.slope_threshold = 0.01
