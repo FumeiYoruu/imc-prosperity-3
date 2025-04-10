@@ -28,7 +28,7 @@ PARAMS = {
         "prevent_adverse": True,
         "adverse_volume": 15,
         "reversion_beta": -0.229,
-        "disregard_edge": 1,
+        "disregard_edge": 2,
         "join_edge": 0,
         "default_edge": 1,
     },
