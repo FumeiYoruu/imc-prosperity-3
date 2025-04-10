@@ -177,6 +177,8 @@ class Trader:
             t_price_change = t_price - self.price_history[-1]
             t_mean_price = statistics.mean(self.price_history[-self.time_frame:])
             t_vol = statistics.stdev(self.price_history[-self.time_frame:])
+            self.alpha = t_vol * 150 / t_mean_price
+            self.beta = 1 - self.alpha
         else:
             t_price_change = 0
             t_mean_price = 0
@@ -218,9 +220,9 @@ class Trader:
 
         self.remaining_time -= 1
 
-        if self.current_position > 0 and (momentum <= 0 or relative_strength_index < 50 or relative_strength_index > 70 or self.remaining_time <= 0):
+        if self.current_position > 0 and (momentum <= -0.05 or relative_strength_index < 50 or relative_strength_index > 70 or self.remaining_time <= 0):
             self.position_wanted = 0
-        elif self.current_position < 0 and (momentum >= 0 or relative_strength_index > 50 or relative_strength_index < 30 or self.remaining_time <= 0):
+        elif self.current_position < 0 and (momentum >= 0.05 or relative_strength_index > 50 or relative_strength_index < 30 or self.remaining_time <= 0):
             self.position_wanted = 0
         elif momentum > 0 and relative_strength_index < 70:
             self.position_wanted = abs(math.floor(self.position_limit * min(1, abs(momentum / self.momentum_threshold))))
