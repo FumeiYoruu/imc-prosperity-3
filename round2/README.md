@@ -25,7 +25,6 @@ Round 2 day 1: -2,326\
 Total profit: 28,860\
 On website: 4,856
 
-
 file: ETF_b1.py\
 Profit summary:\
 Round 2 day -1: 11,704\
@@ -33,3 +32,11 @@ Round 2 day 0: 78,848\
 Round 2 day 1: 7,807\
 Total profit: 98,359\
 On website: 21,193
+
+file: mergeMeanRev.py\
+Profit summary:\
+Round 2 day -1: 35,897\
+Round 2 day 0: 96,159\
+Round 2 day 1: 15,407\
+Total profit: 147,463\
+On website: 12,328
