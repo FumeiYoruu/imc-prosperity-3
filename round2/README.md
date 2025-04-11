@@ -1,6 +1,3 @@
-# Update: Test3.py on website is shitBlock.py here
-12,603 on website for it
-
 ## SQUID INK
 file: squidMomentum.py\
 Profit summary:\
@@ -27,3 +24,12 @@ Round 2 day 0: 25,867\
 Round 2 day 1: -2,326\
 Total profit: 28,860\
 On website: 4,856
+
+
+file: ETF_b1.py\
+Profit summary:\
+Round 2 day -1: 11,704\
+Round 2 day 0: 78,848\
+Round 2 day 1: 7,807\
+Total profit: 98,359\
+On website: 21,193
