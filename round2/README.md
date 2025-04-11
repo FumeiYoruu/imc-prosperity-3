@@ -17,3 +17,11 @@ Round 2 day 0: 26,373\
 Round 2 day 1: -241\
 Total profit: 31,298\
 On website: 3,756
+
+file: meanRev2.py\
+Profit summary:\
+Round 2 day -1: 5,319\
+Round 2 day 0: 25,867\
+Round 2 day 1: -2,326\
+Total profit: 28,860\
+On website: 4,856
