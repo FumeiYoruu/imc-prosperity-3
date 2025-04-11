@@ -40,3 +40,7 @@ Round 2 day 0: 96,159\
 Round 2 day 1: 15,407\
 Total profit: 147,463\
 On website: 12,328
+
+## PICNIC BASKET2
+file: meanrevb2.py\
+On website: 2,784
