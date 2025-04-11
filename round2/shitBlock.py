@@ -109,14 +109,10 @@ class Logger:
 
 logger = Logger()
 
-import json
-import numpy as np
-from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
-
 class Trader:
     def __init__(self):
         self.position_limit = 60
-        self.volume = 5
+        self.volume = 10
         self.threshold = 1.0
 
     def run(self, state: TradingState):
