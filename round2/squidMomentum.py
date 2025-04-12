@@ -165,13 +165,13 @@ class Trader:
                 ask_volume = order_depth.sell_orders[best_ask]
                 volume = min(self.volume, ask_volume, self.position_limit - pos)
                 if volume > 0:
-                    orders.append(Order(product, best_ask, volume))
+                    orders.append(Order(product, best_bid, volume))
 
             elif momentum < -self.momentum_threshold and pos > -self.position_limit:
                 bid_volume = order_depth.buy_orders[best_bid]
                 volume = min(self.volume, bid_volume, pos + self.position_limit)
                 if volume > 0:
-                    orders.append(Order(product, best_bid, -volume))
+                    orders.append(Order(product, best_ask, -volume))
         else:
             pass
 
