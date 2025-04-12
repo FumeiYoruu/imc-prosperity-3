@@ -444,8 +444,8 @@ class Trader:
         if not all(d.buy_orders and d.sell_orders for d in depths.values()):
             return {}, 0, ""
 
-        bids = {p: max(depths[p].buy_orders) for p in prods}
-        asks = {p: min(depths[p].sell_orders) for p in prods}
+        bids = {p: max(depths[p].buy_orders.keys()) for p in prods}
+        asks = {p: min(depths[p].sell_orders.keys()) for p in prods}
         mids = {p: self.wmid(order_depths, p) for p in prods}
         bid_vols = {p: depths[p].buy_orders[bids[p]] for p in prods}
         ask_vols = {p: depths[p].sell_orders[asks[p]] for p in prods}
@@ -503,48 +503,18 @@ class Trader:
 
         return orders, buy_order_volume, sell_order_volume
     
-    def meanRev(self, orders, state: TradingState, product: str, limit: int, buy_order_volume, sell_order_volume):
-
-        if product not in state.order_depths:
-            return orders, buy_order_volume,sell_order_volume
-
-        order_depth = state.order_depths[product]
-        if not order_depth.buy_orders or not order_depth.sell_orders:
-            return orders, buy_order_volume,sell_order_volume
-
-        best_bid = max(order_depth.buy_orders.keys())
-        best_ask = min(order_depth.sell_orders.keys())
-        mid_price = self.wmid(state.order_depths, product)
-
-        if len(self.price_history[product]) <= self.time_frame:
-            return orders, buy_order_volume,sell_order_volume
-
-        def z_score(mid_price):
-            recent = self.price_history[product][-self.time_frame:]
-            rolling_mean = np.mean(recent)
-            rolling_std = np.std(recent)
-            if rolling_std == 0:
-                return 0
-            z_score = (mid_price - rolling_mean) / rolling_std
-            return z_score
-        
-        z = z_score(mid_price)
-        pos = state.position.get(product, 0) + buy_order_volume.get(product, 0) - sell_order_volume.get(product, 0)
-        if z < self.z_lower_threshold and pos < limit:
-            ask_volume = order_depth.sell_orders[best_ask]
-            volume = min(self.volume, ask_volume, limit - pos)
-            if volume > 0:
-                sell_order_volume[product] += volume
-                orders.append(Order(product, best_ask, volume))
-                buy_order_volume
-        elif z > self.z_upper_threshold and pos > -limit:
-            bid_volume = order_depth.buy_orders[best_bid]
-            volume = min(self.volume, bid_volume, pos + limit)
-            if volume > 0:
-                buy_order_volume[product] += volume
-                orders.append(Order(product, best_bid, -volume))
-        
+    def jams(self, orders, order_depths, pos, buy_order_volume, sell_order_volume, product = "JAMS"):
+        if product not in order_depths.keys():
+            return orders, buy_order_volume, sell_order_volume
+        best_bid = max(order_depths[product].buy_orders.keys())
+        bid_volume = abs(order_depths[product].buy_orders[best_bid])
+        position = pos.get(product, 0) + buy_order_volume.get(product, 0) - sell_order_volume.get(product, 0)
+        v = self.volume
+        vol = min(v, bid_volume, self.position_limit[product] + position)
+        orders.append(Order(product, best_bid, -vol))
         return orders, buy_order_volume, sell_order_volume
+
+
     def run(self, state: TradingState):
         orders = []
         buy_order_volume = {}
@@ -561,8 +531,8 @@ class Trader:
             return {}, 0, ""
         orders, buy_order_volume, sell_order_volume = self.etf_b1(state.order_depths, state.position, orders, buy_order_volume, sell_order_volume, prods)
         orders, buy_order_volume, sell_order_volume = self.etf_b2(state.order_depths, state.position, orders, buy_order_volume, sell_order_volume, prods2)
-        # for product in prods[1:]:
-        #     orders, buy_order_volume, sell_order_volume = self.meanRev(orders, state, product, self.position_limit[product], buy_order_volume, sell_order_volume)
+        orders, buy_order_volume, sell_order_volume = self.jams(orders, state.order_depths, state.position, buy_order_volume, sell_order_volume, 'CROISSANTS')
+        orders, buy_order_volume, sell_order_volume = self.jams(orders, state.order_depths, state.position, buy_order_volume, sell_order_volume, 'JAMS')
         result = {}
         for o in orders:
             result.setdefault(o.symbol, []).append(o)
