@@ -3,6 +3,7 @@ import numpy as np
 from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
 import statistics
 from typing import List
+import math
 
 class Logger:
     def __init__(self) -> None:
@@ -114,22 +115,33 @@ logger = Logger()
 
 class Trader:
     def __init__(self):
-        self.volume = 10
+        self.volume = 30
         self.threshold = 1.0
         self.position_limit = {
             "PICNIC_BASKET1": 60,
             "CROISSANTS": 250,
             "JAMS": 350,
-            "DJEMBES": 60
+            "DJEMBES": 60,
+            "PICNIC_BASKET2": 100,
         }
         self.b1_weights = {
             'CROISSANTS' : 6,
             'JAMS' : 3,
             'DJEMBES' : 1,
         }
+
+        self.b2_weights = {
+            'CROISSANTS' : 4,
+            'JAMS' : 2,
+        }
         self.spread_history = []
+        self.price_history = {}
         self.time_frame = 100
-        self.z_score_threshold = 0.5
+        self.spread_mean_lookback = 100
+        self.z_score_threshold = 3
+        self.z_upper_threshold = 2
+        self.z_lower_threshold = -2
+        self.spread_history2 = []
 
     def take_best_orders(
         self,
@@ -294,81 +306,263 @@ class Trader:
 
         return orders, buy_order_volume, sell_order_volume
     
+    def clear_position(self, fair_value, width, order_depths, orders, pos, product, buy_order_volume, sell_order_volume):
+        position_after_take = pos.get(product, 0) + buy_order_volume.get(product, 0) - sell_order_volume.get(product, 0)
+        fair_for_bid = round(fair_value - width)
+        fair_for_ask = round(fair_value + width)
+
+        buy_quantity = self.position_limit[product] - (pos.get(product, 0) + buy_order_volume.get(product, 0))
+        sell_quantity = self.position_limit[product] + (pos.get(product, 0) - sell_order_volume.get(product, 0))
+
+        if position_after_take > 0:
+            # Aggregate volume from all buy orders with price greater than fair_for_ask
+            clear_quantity = sum(
+                volume
+                for price, volume in order_depths[product].buy_orders.items()
+                if price >= fair_for_ask
+            )
+            clear_quantity = min(clear_quantity, position_after_take)
+            sent_quantity = min(sell_quantity, clear_quantity)
+            if sent_quantity > 0:
+                orders.append(Order(product, fair_for_ask, -abs(sent_quantity)))
+                sell_order_volume[product] += abs(sent_quantity)
+
+        if position_after_take < 0:
+            # Aggregate volume from all sell orders with price lower than fair_for_bid
+            clear_quantity = sum(
+                abs(volume)
+                for price, volume in order_depths[product].sell_orders.items()
+                if price <= fair_for_bid
+            )
+            clear_quantity = min(clear_quantity, abs(position_after_take))
+            sent_quantity = min(buy_quantity, clear_quantity)
+            if sent_quantity > 0:
+                orders.append(Order(product, fair_for_bid, abs(sent_quantity)))
+                buy_order_volume[product] += abs(sent_quantity)
+
+        return orders, buy_order_volume, sell_order_volume
+
+
+    def wmid(self, order_depths, product):
+        order_depth = order_depths[product]
+        best_bid = max(order_depth.buy_orders.keys())
+        best_ask = min(order_depth.sell_orders.keys())
+        best_bid_vol = abs(order_depth.buy_orders[best_bid])
+        best_ask_vol = abs(order_depth.sell_orders[best_ask])
+        return (best_bid * best_ask_vol + best_ask * best_bid_vol) / (best_bid_vol + best_ask_vol)
+    
     def implied_basket_volume(self, order_depths, pos, basket_weights, prods):
         depths = {p: order_depths[p] for p in prods}
-        if not all(d.buy_orders and d.sell_orders for d in depths.values()):
-            return {}, 0, ""
 
         bids = {p: max(depths[p].buy_orders) for p in prods}
         asks = {p: min(depths[p].sell_orders) for p in prods}
-        mids = {p: (bids[p] + asks[p]) / 2 for p in prods}
+        mids = {p: self.wmid(order_depths, p) for p in prods}
         bid_vols = {p: depths[p].buy_orders[bids[p]] for p in prods}
         ask_vols = {p: depths[p].sell_orders[asks[p]] for p in prods}
         buy_volume = 10000
         for p in basket_weights.keys():
-            
+            ask_volume = abs(ask_vols.get(p, 0))
+            buy_volume = min(buy_volume, math.floor(ask_volume / basket_weights[p]), (self.position_limit[p] - pos.get(p, 0)) // basket_weights[p])
+        sell_volume = 1000
+        for p in basket_weights.keys():
+            bid_volume = bid_vols.get(p, 0)
+            sell_volume = min(sell_volume, math.floor(bid_volume / basket_weights[p]), (self.position_limit[p] + pos.get(p, 0)) // basket_weights[p])
 
         return buy_volume, sell_volume
 
     def etf_b1(self, order_depths, pos, orders, buy_order_volume, sell_order_volume, prods):
+    
+    
         depths = {p: order_depths[p] for p in prods}
         if not all(d.buy_orders and d.sell_orders for d in depths.values()):
             return {}, 0, ""
 
         bids = {p: max(depths[p].buy_orders) for p in prods}
         asks = {p: min(depths[p].sell_orders) for p in prods}
-        mids = {p: (bids[p] + asks[p]) / 2 for p in prods}
+        mids = {p: self.wmid(order_depths, p) for p in prods}
         bid_vols = {p: depths[p].buy_orders[bids[p]] for p in prods}
         ask_vols = {p: depths[p].sell_orders[asks[p]] for p in prods}
-
+        for p in prods:
+            if p not in self.price_history.keys():
+               self.price_history[p] = []
+            else:
+                self.price_history[p].append(mids[p])
         # TODO: check whether to change the method for calculating nav
         nav = 6 * mids["CROISSANTS"] + 3 * mids["JAMS"] + mids["DJEMBES"]
         spread = mids["PICNIC_BASKET1"] - nav
-        self.spread_history.append(abs(spread))
-        if(len(self.spread_history) >= 50):
+        
+        implied_buy_volume, implied_sell_volume = self.implied_basket_volume(order_depths=order_depths, pos=pos, basket_weights=self.b1_weights, prods=prods)
+        if(len(self.spread_history) >= 100):
             spread_mean = statistics.mean(self.spread_history[-self.time_frame:])
             spread_vol = statistics.stdev(self.spread_history[-self.time_frame:])
-            spread_z_score = (abs(spread) - spread_mean) / spread_vol
+            spread_z_score = (spread - spread_mean) / spread_vol
+        elif len(self.spread_history) >= 2:
+            spread_vol = 80
+            spread_mean = statistics.mean(self.spread_history[-self.time_frame:])
+            spread_z_score = (spread - spread_mean) / spread_vol
         else:
-            spread_z_score = self.z_score_threshold + 1
+            spread_z_score = 0
+            
+        self.spread_history.append(spread)
         v = self.volume
 
         # TODO: tune self.volume & self.threshold
-        if spread > 0 and spread_z_score > self.z_score_threshold:
-            vol = min(v, bid_vols["PICNIC_BASKET1"], self.position_limit["PICNIC_BASKET1"] + pos.get("PICNIC_BASKET1", 0))
-            if vol > 0:
-                orders.append(Order("PICNIC_BASKET1", bids["PICNIC_BASKET1"], -vol))
-                sell_order_volume['PICNIC_BASKET1'] += vol
-            for prod, nums in [("CROISSANTS", 6), ("JAMS", 3), ("DJEMBES", 1)]:
-                vol = min(nums * v, ask_vols[prod], self.position_limit[prod] - pos.get(prod, 0))
+        if abs(spread_z_score) > self.z_score_threshold:
+            if  spread > 0 and spread_z_score > self.z_score_threshold:
+                vol = min(v, bid_vols["PICNIC_BASKET1"], self.position_limit["PICNIC_BASKET1"] + pos.get("PICNIC_BASKET1", 0))
                 if vol > 0:
-                    orders.append(Order(prod, asks[prod], vol))
-                    buy_order_volume[prod] += vol
+                    orders.append(Order("PICNIC_BASKET1", bids["PICNIC_BASKET1"], -vol))
+                    sell_order_volume['PICNIC_BASKET1'] += vol
+                # for prod, nums in [("CROISSANTS", 6), ("JAMS", 3), ("DJEMBES", 1)]:
+                #     vol = min(nums * vol, -ask_vols[prod], self.position_limit[prod] - pos.get(prod, 0))
+                #     if vol > 0:
+                #         orders.append(Order(prod, asks[prod], vol))
+                #         buy_order_volume[prod] += vol
 
-        elif spread < 0 and spread_z_score > self.z_score_threshold:
-            vol = min(v, ask_vols["PICNIC_BASKET1"], self.position_limit["PICNIC_BASKET1"] - pos.get("PICNIC_BASKET1", 0))
-            if vol > 0:
-                orders.append(Order("PICNIC_BASKET1", asks["PICNIC_BASKET1"], vol))
-                buy_order_volume['PICNIC_BASKET1'] += vol
-            for prod, nums in [("CROISSANTS", 6), ("JAMS", 3), ("DJEMBES", 1)]:
-                vol = min(nums * v, bid_vols[prod], self.position_limit[prod] + pos.get(prod, 0))
+            elif  spread  < 0 and spread_z_score < -self.z_score_threshold:
+                vol = min(v, -ask_vols["PICNIC_BASKET1"], self.position_limit["PICNIC_BASKET1"] - pos.get("PICNIC_BASKET1", 0))
                 if vol > 0:
-                    orders.append(Order(prod, bids[prod], -vol))
-                    sell_order_volume[prod] += vol
+                    orders.append(Order("PICNIC_BASKET1", asks["PICNIC_BASKET1"], vol))
+                    buy_order_volume['PICNIC_BASKET1'] += vol
+                # for prod, nums in [("CROISSANTS", 6), ("JAMS", 3), ("DJEMBES", 1)]:
+                #     vol = min(nums * vol, bid_vols[prod], self.position_limit[prod] + pos.get(prod, 0))
+                #     if vol > 0:
+                #         orders.append(Order(prod, bids[prod], -vol))
+                #         sell_order_volume[prod] += vol
+        # elif spread_z_score < 0.25 * self.z_score_threshold:
+        #     for p in [prods[0]]:
+        #         if len(self.price_history[p]) >= 100:
+        #             fair_value = statistics.mean(self.price_history[p][-100:])
+        #             orders, buy_order_volume, sell_order_volume = self.clear_position(fair_value, 2, order_depths, orders, pos, p, buy_order_volume, sell_order_volume)
+
         return orders, buy_order_volume, sell_order_volume
+    
+    def etf_b2(self, order_depths, pos, orders, buy_order_volume, sell_order_volume, prods):
+    
+    
+        depths = {p: order_depths[p] for p in prods}
+        if not all(d.buy_orders and d.sell_orders for d in depths.values()):
+            return {}, 0, ""
 
+        bids = {p: max(depths[p].buy_orders) for p in prods}
+        asks = {p: min(depths[p].sell_orders) for p in prods}
+        mids = {p: self.wmid(order_depths, p) for p in prods}
+        bid_vols = {p: depths[p].buy_orders[bids[p]] for p in prods}
+        ask_vols = {p: depths[p].sell_orders[asks[p]] for p in prods}
+        for p in prods:
+            if p not in self.price_history.keys():
+               self.price_history[p] = []
+            else:
+                self.price_history[p].append(mids[p])
+        # TODO: check whether to change the method for calculating nav
+        nav = 4 * mids["CROISSANTS"] + 2 * mids["JAMS"] 
+        spread = mids["PICNIC_BASKET2"] - nav
+        
+        implied_buy_volume, implied_sell_volume = self.implied_basket_volume(order_depths=order_depths, pos=pos, basket_weights=self.b1_weights, prods=prods)
+        if(len(self.spread_history2) >= 100):
+            spread_mean = statistics.mean(self.spread_history2[-self.time_frame:])
+            spread_vol = statistics.stdev(self.spread_history2[-self.time_frame:])
+            spread_z_score = (spread - spread_mean) / spread_vol
+        elif len(self.spread_history2) >= 2:
+            spread_vol = 50
+            spread_mean = statistics.mean(self.spread_history2[-self.time_frame:]) 
+            spread_z_score = (spread - spread_mean) / spread_vol
+        else:
+            spread_z_score = 0
+        self.spread_history2.append(spread)
+        v = self.volume
+
+        # TODO: tune self.volume & self.threshold
+        if abs(spread_z_score) > self.z_score_threshold:
+            if  spread > 0 and spread_z_score > self.z_score_threshold:
+                vol = min(v, bid_vols["PICNIC_BASKET2"], self.position_limit["PICNIC_BASKET2"] + pos.get("PICNIC_BASKET2", 0))
+                if vol > 0:
+                    orders.append(Order("PICNIC_BASKET2", bids["PICNIC_BASKET2"], -vol))
+                    sell_order_volume['PICNIC_BASKET2'] += vol
+                # for prod, nums in [("CROISSANTS", 6), ("JAMS", 3), ("DJEMBES", 1)]:
+                #     vol = min(nums * vol, -ask_vols[prod], self.position_limit[prod] - pos.get(prod, 0))
+                #     if vol > 0:
+                #         orders.append(Order(prod, asks[prod], vol))
+                #         buy_order_volume[prod] += vol
+
+            elif  spread  < 0 and spread_z_score < -self.z_score_threshold:
+                vol = min(v, -ask_vols["PICNIC_BASKET2"], self.position_limit["PICNIC_BASKET2"] - pos.get("PICNIC_BASKET2", 0))
+                if vol > 0:
+                    orders.append(Order("PICNIC_BASKET2", asks["PICNIC_BASKET2"], vol))
+                    buy_order_volume['PICNIC_BASKET2'] += vol
+                # for prod, nums in [("CROISSANTS", 6), ("JAMS", 3), ("DJEMBES", 1)]:
+                #     vol = min(nums * vol, bid_vols[prod], self.position_limit[prod] + pos.get(prod, 0))
+                #     if vol > 0:
+                #         orders.append(Order(prod, bids[prod], -vol))
+                #         sell_order_volume[prod] += vol
+        # elif spread_z_score < 0.5 * self.z_score_threshold:
+        #     for p in [prods[0]]:
+        #         if len(self.price_history[p]) >= 100:
+        #             fair_value = statistics.mean(self.price_history2[p][-100:])
+        #             orders, buy_order_volume, sell_order_volume = self.clear_position(fair_value, 2, order_depths, orders, pos, p, buy_order_volume, sell_order_volume)
+
+        return orders, buy_order_volume, sell_order_volume
+    
+    def meanRev(self, orders, state: TradingState, product: str, limit: int, buy_order_volume, sell_order_volume):
+
+        if product not in state.order_depths:
+            return orders, buy_order_volume,sell_order_volume
+
+        order_depth = state.order_depths[product]
+        if not order_depth.buy_orders or not order_depth.sell_orders:
+            return orders, buy_order_volume,sell_order_volume
+
+        best_bid = max(order_depth.buy_orders.keys())
+        best_ask = min(order_depth.sell_orders.keys())
+        mid_price = self.wmid(state.order_depths, product)
+
+        if len(self.price_history[product]) <= self.time_frame:
+            return orders, buy_order_volume,sell_order_volume
+
+        def z_score(mid_price):
+            recent = self.price_history[product][-self.time_frame:]
+            rolling_mean = np.mean(recent)
+            rolling_std = np.std(recent)
+            if rolling_std == 0:
+                return 0
+            z_score = (mid_price - rolling_mean) / rolling_std
+            return z_score
+        
+        z = z_score(mid_price)
+        pos = state.position.get(product, 0) + buy_order_volume.get(product, 0) - sell_order_volume.get(product, 0)
+        if z < self.z_lower_threshold and pos < limit:
+            ask_volume = order_depth.sell_orders[best_ask]
+            volume = min(self.volume, ask_volume, limit - pos)
+            if volume > 0:
+                sell_order_volume[product] += volume
+                orders.append(Order(product, best_ask, volume))
+                buy_order_volume
+        elif z > self.z_upper_threshold and pos > -limit:
+            bid_volume = order_depth.buy_orders[best_bid]
+            volume = min(self.volume, bid_volume, pos + limit)
+            if volume > 0:
+                buy_order_volume[product] += volume
+                orders.append(Order(product, best_bid, -volume))
+        
+        return orders, buy_order_volume, sell_order_volume
     def run(self, state: TradingState):
         orders = []
         buy_order_volume = {}
         sell_order_volume = {}
         prods = ["PICNIC_BASKET1", "CROISSANTS", "JAMS", "DJEMBES"]
+        prods2 = ["PICNIC_BASKET2", "CROISSANTS", "JAMS"]
         for p in prods:
+            buy_order_volume[p] = 0
+            sell_order_volume[p] = 0
+        for p in prods2:
             buy_order_volume[p] = 0
             sell_order_volume[p] = 0
         if not all(p in state.order_depths for p in prods):
             return {}, 0, ""
         orders, buy_order_volume, sell_order_volume = self.etf_b1(state.order_depths, state.position, orders, buy_order_volume, sell_order_volume, prods)
-        
+        orders, buy_order_volume, sell_order_volume = self.etf_b2(state.order_depths, state.position, orders, buy_order_volume, sell_order_volume, prods2)
+        # for product in prods[1:]:
+        #     orders, buy_order_volume, sell_order_volume = self.meanRev(orders, state, product, self.position_limit[product], buy_order_volume, sell_order_volume)
         result = {}
         for o in orders:
             result.setdefault(o.symbol, []).append(o)

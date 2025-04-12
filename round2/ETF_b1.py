@@ -151,12 +151,12 @@ class Trader:
             if vol > 0:
                 orders.append(Order("PICNIC_BASKET1", bids["PICNIC_BASKET1"], -vol))
             for prod, nums in [("CROISSANTS", 6), ("JAMS", 3), ("DJEMBES", 1)]:
-                vol = min(nums * v, ask_vols[prod], self.position_limit[prod] - pos.get(prod, 0))
+                vol = min(nums * v, abs(ask_vols[prod]), self.position_limit[prod] - pos.get(prod, 0))
                 if vol > 0:
                     orders.append(Order(prod, asks[prod], vol))
 
         elif spread < -self.threshold:
-            vol = min(v, ask_vols["PICNIC_BASKET1"], self.position_limit["PICNIC_BASKET1"] - pos.get("PICNIC_BASKET1", 0))
+            vol = min(v, abs(ask_vols["PICNIC_BASKET1"]), self.position_limit["PICNIC_BASKET1"] - pos.get("PICNIC_BASKET1", 0))
             if vol > 0:
                 orders.append(Order("PICNIC_BASKET1", asks["PICNIC_BASKET1"], vol))
             for prod, nums in [("CROISSANTS", 6), ("JAMS", 3), ("DJEMBES", 1)]:
