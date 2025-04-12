@@ -1,5 +1,5 @@
 ## CROISSANTS
-file: kuasong.py\
+file: kuasong.py [Fresh Crossiant](https://github.com/FumeiYoruu/imc-prosperity-3/blob/main/round2/kuasong.py)\
 706 on website
 
 ## SQUID INK
