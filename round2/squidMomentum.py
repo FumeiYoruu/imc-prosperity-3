@@ -157,7 +157,7 @@ class Trader:
         A = np.vstack([x, np.ones(len(x))]).T
         slope, intercept = np.linalg.lstsq(A, recent, rcond=None)[0]
 
-        predicted = slope * self.window + intercept  # 预测下一步 mid_price
+        predicted = slope * self.window + intercept 
         diff = predicted - mid_price
 
         pos = state.position.get(product, 0)
