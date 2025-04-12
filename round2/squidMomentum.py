@@ -127,11 +127,11 @@ class Trader:
     def __init__(self):
         self.product = "SQUID_INK"
         self.position_limit = 50
-        self.volume = 8
+        self.volume = 6
 
         self.history = []
-        self.window = 40
-        self.pred_threshold = 3
+        self.window = 18
+        self.momentum_threshold = 10
 
     def run(self, state):
         orders = []
@@ -144,36 +144,32 @@ class Trader:
         if not order_depth.buy_orders or not order_depth.sell_orders:
             return {}, 0, ""
 
-        best_bid = max(order_depth.buy_orders)
-        best_ask = min(order_depth.sell_orders)
+        best_bid = max(order_depth.buy_orders.keys())
+        best_ask = min(order_depth.sell_orders.keys())
         mid_price = (best_bid + best_ask) / 2
 
         self.history.append(mid_price)
         if len(self.history) <= self.window:
             return {}, 0, ""
 
-        recent = np.array(self.history[-self.window:])
-        x = np.arange(self.window)
-        A = np.vstack([x, np.ones(len(x))]).T
-        slope, intercept = np.linalg.lstsq(A, recent, rcond=None)[0]
-
-        predicted = slope * self.window + intercept 
-        diff = predicted - mid_price
+        momentum = self.history[-1] - self.history[-self.window]
 
         pos = state.position.get(product, 0)
 
-        if diff > self.pred_threshold and pos < self.position_limit:
+        if momentum > self.momentum_threshold and pos < self.position_limit:
             ask_volume = order_depth.sell_orders.get(best_ask, 0)
             volume = min(self.volume, -ask_volume, self.position_limit - pos)
             if volume > 0:
                 orders.append(Order(product, best_ask, volume))
 
-        elif diff < -self.pred_threshold and pos > -self.position_limit:
+        elif momentum < -self.momentum_threshold and pos > -self.position_limit:
             bid_volume = order_depth.buy_orders.get(best_bid, 0)
             volume = min(self.volume, bid_volume, pos + self.position_limit)
             if volume > 0:
                 orders.append(Order(product, best_bid, -volume))
 
         result = {product: orders}
+        conversions = 0
+        traderData = ""
         logger.flush(state, result, 0, "")
-        return result, 0, ""
+        return result, conversions, traderData
