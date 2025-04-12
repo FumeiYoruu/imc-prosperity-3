@@ -1,7 +1,6 @@
 ## SQUID INK
 file: squidMomentum.py\
-IMC change the squid data for simulation again and we get a negative pnl fck\
-**this need to rewrite**
+699 on website
 
 ## PICNIC BASKET1
 file: meanRev1.py\

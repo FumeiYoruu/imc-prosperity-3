@@ -127,14 +127,14 @@ class Trader:
     def __init__(self):
         self.product = "SQUID_INK"
         self.position_limit = 50
-        self.volume = 2
+        self.volume = 8
+
         self.history = []
-
         self.window = 30
-        self.std_threshold = 0.8
-        self.momentum_threshold = 0.8
+        self.std_threshold = 1.0
+        self.momentum_threshold = 15
 
-    def run(self, state: TradingState):
+    def run(self, state):
         orders = []
         product = self.product
 
@@ -154,29 +154,24 @@ class Trader:
             return {}, 0, ""
 
         recent = self.history[-self.window:]
-        rolling_std = np.std(recent)
-        
         momentum = self.history[-1] - self.history[-self.window]
 
         pos = state.position.get(product, 0)
 
-        if rolling_std > self.std_threshold:
-            if momentum > self.momentum_threshold and pos < self.position_limit:
-                ask_volume = order_depth.sell_orders[best_ask]
-                volume = min(self.volume, ask_volume, self.position_limit - pos)
+        if momentum > self.momentum_threshold and pos < self.position_limit:
+                ask_volume = order_depth.sell_orders.get(best_ask, 0)
+                volume = min(self.volume, -ask_volume, self.position_limit - pos)
                 if volume > 0:
                     orders.append(Order(product, best_ask, volume))
 
-            elif momentum < -self.momentum_threshold and pos > -self.position_limit:
-                bid_volume = order_depth.buy_orders[best_bid]
+        elif momentum < -self.momentum_threshold and pos > -self.position_limit:
+                bid_volume = order_depth.buy_orders.get(best_bid, 0)
                 volume = min(self.volume, bid_volume, pos + self.position_limit)
                 if volume > 0:
                     orders.append(Order(product, best_bid, -volume))
-        else:
-            pass
 
         result = {product: orders}
         conversions = 0
         traderData = ""
-        logger.flush(state, result, conversions, traderData)
+        logger.flush(state, result, 0, "")
         return result, conversions, traderData
