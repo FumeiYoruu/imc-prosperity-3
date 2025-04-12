@@ -133,7 +133,6 @@ class Trader:
         self.window = 30
         self.std_threshold = 1.0
         self.momentum_threshold = 15
-        self.trade_probability = 1
 
     def run(self, state):
         orders = []
@@ -163,13 +162,13 @@ class Trader:
         if momentum > self.momentum_threshold and pos < self.position_limit:
                 ask_volume = order_depth.sell_orders.get(best_ask, 0)
                 volume = min(self.volume, -ask_volume, self.position_limit - pos)
-                if volume > 0 and np.random.rand() < self.trade_probability:
+                if volume > 0:
                     orders.append(Order(product, best_ask, volume))
 
         elif momentum < -self.momentum_threshold and pos > -self.position_limit:
                 bid_volume = order_depth.buy_orders.get(best_bid, 0)
                 volume = min(self.volume, bid_volume, pos + self.position_limit)
-                if volume > 0 and np.random.rand() < self.trade_probability:
+                if volume > 0:
                     orders.append(Order(product, best_bid, -volume))
 
         result = {product: orders}
