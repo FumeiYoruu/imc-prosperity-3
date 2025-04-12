@@ -154,7 +154,6 @@ class Trader:
             return {}, 0, ""
 
         recent = self.history[-self.window:]
-        rolling_std = np.std(recent)
         momentum = self.history[-1] - self.history[-self.window]
 
         pos = state.position.get(product, 0)
