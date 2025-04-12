@@ -126,9 +126,9 @@ class Trader:
     def __init__(self):
         self.product = "CROISSANTS"
         self.position_limit = 250
-        self.volume = 8
+        self.volume = 10
         self.history = []
-        self.window = 35
+        self.window = 45
         self.pred_threshold = 2
 
     def run(self, state):
