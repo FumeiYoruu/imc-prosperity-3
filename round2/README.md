@@ -1,6 +1,6 @@
 ## CROISSANTS
 file: kuasong.py [Fresh Crossiant](https://github.com/FumeiYoruu/imc-prosperity-3/blob/main/round2/kuasong.py)\
-737 on website
+1332 on website
 
 ## SQUID INK
 file: squidMomentum.py [Click to see pattern](https://github.com/FumeiYoruu/imc-prosperity-3/blob/main/round2/squidMomentum.py)\
