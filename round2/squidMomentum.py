@@ -130,9 +130,8 @@ class Trader:
         self.volume = 8
 
         self.history = []
-        self.window = 30
-        self.std_threshold = 1.0
-        self.momentum_threshold = 15
+        self.window = 40
+        self.pred_threshold = 3
 
     def run(self, state):
         orders = []
@@ -145,33 +144,36 @@ class Trader:
         if not order_depth.buy_orders or not order_depth.sell_orders:
             return {}, 0, ""
 
-        best_bid = max(order_depth.buy_orders.keys())
-        best_ask = min(order_depth.sell_orders.keys())
+        best_bid = max(order_depth.buy_orders)
+        best_ask = min(order_depth.sell_orders)
         mid_price = (best_bid + best_ask) / 2
 
         self.history.append(mid_price)
         if len(self.history) <= self.window:
             return {}, 0, ""
 
-        recent = self.history[-self.window:]
-        momentum = self.history[-1] - self.history[-self.window]
+        recent = np.array(self.history[-self.window:])
+        x = np.arange(self.window)
+        A = np.vstack([x, np.ones(len(x))]).T
+        slope, intercept = np.linalg.lstsq(A, recent, rcond=None)[0]
+
+        predicted = slope * self.window + intercept  # 预测下一步 mid_price
+        diff = predicted - mid_price
 
         pos = state.position.get(product, 0)
 
-        if momentum > self.momentum_threshold and pos < self.position_limit:
-                ask_volume = order_depth.sell_orders.get(best_ask, 0)
-                volume = min(self.volume, -ask_volume, self.position_limit - pos)
-                if volume > 0:
-                    orders.append(Order(product, best_ask, volume))
+        if diff > self.pred_threshold and pos < self.position_limit:
+            ask_volume = order_depth.sell_orders.get(best_ask, 0)
+            volume = min(self.volume, -ask_volume, self.position_limit - pos)
+            if volume > 0:
+                orders.append(Order(product, best_ask, volume))
 
-        elif momentum < -self.momentum_threshold and pos > -self.position_limit:
-                bid_volume = order_depth.buy_orders.get(best_bid, 0)
-                volume = min(self.volume, bid_volume, pos + self.position_limit)
-                if volume > 0:
-                    orders.append(Order(product, best_bid, -volume))
+        elif diff < -self.pred_threshold and pos > -self.position_limit:
+            bid_volume = order_depth.buy_orders.get(best_bid, 0)
+            volume = min(self.volume, bid_volume, pos + self.position_limit)
+            if volume > 0:
+                orders.append(Order(product, best_bid, -volume))
 
         result = {product: orders}
-        conversions = 0
-        traderData = ""
         logger.flush(state, result, 0, "")
-        return result, conversions, traderData
+        return result, 0, ""
