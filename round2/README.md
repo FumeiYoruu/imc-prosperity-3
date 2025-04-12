@@ -1,6 +1,6 @@
 ## SQUID INK
 file: squidMomentum.py\
-699 on website
+800 on website
 
 ## PICNIC BASKET1
 file: meanRev1.py\
