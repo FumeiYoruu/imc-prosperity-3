@@ -1,3 +1,7 @@
+## CROISSANTS
+file: kuasong.py\
+706 on website
+
 ## SQUID INK
 file: squidMomentum.py\
 800 on website
