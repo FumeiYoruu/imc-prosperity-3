@@ -4,7 +4,7 @@ file: kuasong.py [Fresh Crossiant](https://github.com/FumeiYoruu/imc-prosperity-
 
 ## SQUID INK
 file: squidMomentum.py [Click to see pattern](https://github.com/FumeiYoruu/imc-prosperity-3/blob/main/round2/squidMomentum.py)\
-800 on website **but 726 today morning wtf they change the data again**
+800 on website
 
 ## PICNIC BASKET1
 file: meanRev1.py\
