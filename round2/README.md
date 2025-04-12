@@ -3,7 +3,7 @@ file: kuasong.py [Fresh Crossiant](https://github.com/FumeiYoruu/imc-prosperity-
 706 on website
 
 ## SQUID INK
-file: squidMomentum.py\
+file: squidMomentum.py [Click to see pattern](https://github.com/FumeiYoruu/imc-prosperity-3/blob/main/round2/squidMomentum.py)\
 800 on website
 
 ## PICNIC BASKET1
