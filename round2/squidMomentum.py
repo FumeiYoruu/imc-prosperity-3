@@ -131,8 +131,7 @@ class Trader:
         self.history = []
 
         self.window = 30
-        self.std_threshold = 1
-        self.momentum_threshold = 2
+        self.momentum_threshold = 20
 
     def run(self, state: TradingState):
         orders = []
@@ -160,20 +159,17 @@ class Trader:
 
         pos = state.position.get(product, 0)
 
-        if rolling_std > self.std_threshold:
-            if momentum > self.momentum_threshold and pos < self.position_limit:
-                ask_volume = order_depth.sell_orders[best_ask]
-                volume = min(self.volume, ask_volume, self.position_limit - pos)
-                if volume > 0:
-                    orders.append(Order(product, best_bid, volume))
+        if momentum > self.momentum_threshold and pos < self.position_limit:
+            ask_volume = order_depth.sell_orders[best_ask]
+            volume = min(self.volume, ask_volume, self.position_limit - pos)
+            if volume > 0:
+                orders.append(Order(product, best_bid, volume))
 
-            elif momentum < -self.momentum_threshold and pos > -self.position_limit:
-                bid_volume = order_depth.buy_orders[best_bid]
-                volume = min(self.volume, bid_volume, pos + self.position_limit)
-                if volume > 0:
-                    orders.append(Order(product, best_ask, -volume))
-        else:
-            pass
+        elif momentum < -self.momentum_threshold and pos > -self.position_limit:
+            bid_volume = order_depth.buy_orders[best_bid]
+            volume = min(self.volume, bid_volume, pos + self.position_limit)
+            if volume > 0:
+                orders.append(Order(product, best_ask, -volume))
 
         result = {product: orders}
         conversions = 0
