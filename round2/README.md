@@ -1,7 +1,7 @@
 ## CROISSANTS
 file: kuasong.py [Fresh Crossiant](https://github.com/FumeiYoruu/imc-prosperity-3/blob/main/round2/kuasong.py)\
 1332 on website\
-**update:** kuasong_stable.py has 425 on simulation but much more stable on backtester
+**update:** kuasong_stable.py has 363 on simulation but much more stable on backtester
 
 ## SQUID INK
 file: squidMomentum.py [Click to see pattern](https://github.com/FumeiYoruu/imc-prosperity-3/blob/main/round2/squidMomentum.py)\
