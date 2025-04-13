@@ -121,8 +121,8 @@ class Trader:
         self.position_limit = 250
         self.volume = 35
         self.history = []
-        self.window = 30
-        self.pred_threshold = 1.8
+        self.window = 75
+        self.pred_threshold = 2.2
 
     def run(self, state):
         orders = []
