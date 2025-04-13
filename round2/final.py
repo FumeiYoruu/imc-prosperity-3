@@ -151,11 +151,12 @@ class Trader:
         self.djembes_adverse_volume = 30
         self.kelp_reversion_param = -0.229
         self.kelp_adverse_volume = 20
-        self.squid_window = 18
-        self.squid_momentum_threshold = 10
+        self.squid_window = 30
+        self.squid_momentum_threshold = 0.5
+        self.std_threshold = 3.3 #squid
         self.croissant_volume = 35
         self.croissant_window = 70
-        self.pred_threshold = 1.8 #kuasong
+        self.pred_threshold = 2.2 #kuasong
     
     def squid(self, state, orders, buy_order_volume, sell_order_volume, product = 'SQUID_INK'):
     
@@ -173,24 +174,26 @@ class Trader:
 
         if len(self.price_history[product]) <= self.squid_window:
             return orders, buy_order_volume, sell_order_volume
-
+        recent = self.price_history[product][-self.squid_window:]
+        rolling_std = np.std(recent)
         momentum = self.price_history[product][-1] - self.price_history[product][-self.squid_window]
 
         pos = state.position.get(product, 0)
+        if rolling_std > self.std_threshold:
+            if momentum > self.squid_momentum_threshold and pos < self.position_limit[product]:
+                #bug
+                ask_volume = order_depth.sell_orders.get(best_ask, 0)
+                volume = min(self.squid_volume, ask_volume, self.position_limit[product] - pos)
+                if volume > 0:
+                    orders.append(Order(product, best_ask, volume))
+                    buy_order_volume[product] += volume
 
-        if momentum > self.squid_momentum_threshold and pos < self.position_limit[product]:
-            ask_volume = order_depth.sell_orders.get(best_ask, 0)
-            volume = min(self.squid_volume, -ask_volume, self.position_limit[product] - pos)
-            if volume > 0:
-                orders.append(Order(product, best_ask, volume))
-                buy_order_volume[product] += volume
-
-        elif momentum < -self.squid_momentum_threshold and pos > -self.position_limit[product]:
-            bid_volume = order_depth.buy_orders.get(best_bid, 0)
-            volume = min(self.squid_volume, bid_volume, pos + self.position_limit[product])
-            if volume > 0:
-                orders.append(Order(product, best_bid, -volume))
-                sell_order_volume[product] += volume
+            elif momentum < -self.squid_momentum_threshold and pos > -self.position_limit[product]:
+                bid_volume = order_depth.buy_orders.get(best_bid, 0)
+                volume = min(self.squid_volume, bid_volume, pos + self.position_limit[product])
+                if volume > 0:
+                    orders.append(Order(product, best_bid, -volume))
+                    sell_order_volume[product] += volume
         return orders, buy_order_volume, sell_order_volume
 
     def croissant(self, state, orders, buy_order_volume, sell_order_volume, product = 'CROISSANTS'):
@@ -955,7 +958,7 @@ class Trader:
         orders, buy_order_volume, sell_order_volume = self.djembes(state, 'DJEMBES', orders, buy_order_volume, sell_order_volume, traderObject)
         orders, buy_order_volume, sell_order_volume = self.kelp(state, 'KELP', orders, buy_order_volume, sell_order_volume, traderObject)
         orders, buy_order_volume, sell_order_volume = self.rainforest_resin(state, 'RAINFOREST_RESIN', orders, buy_order_volume, sell_order_volume)
-        #orders, buy_order_volume, sell_order_volume = self.squid(state, orders, buy_order_volume, sell_order_volume, 'SQUID_INK')
+        orders, buy_order_volume, sell_order_volume = self.squid(state, orders, buy_order_volume, sell_order_volume, 'SQUID_INK')
         orders, buy_order_volume, sell_order_volume = self.croissant(state, orders, buy_order_volume, sell_order_volume, 'CROISSANTS')
         result = {}
         for o in orders:
