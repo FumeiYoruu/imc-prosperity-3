@@ -4,6 +4,7 @@ from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder
 import statistics
 from typing import List
 import math
+import jsonpickle
 
 class Logger:
     def __init__(self) -> None:
@@ -123,6 +124,9 @@ class Trader:
             "JAMS": 350,
             "DJEMBES": 60,
             "PICNIC_BASKET2": 100,
+            'KELP' : 50,
+            'RAINFOREST_RESIN' : 50,
+            'SQUID_INK' : 50
         }
         self.b1_weights = {
             'CROISSANTS' : 6,
@@ -142,7 +146,8 @@ class Trader:
         self.z_upper_threshold = 2
         self.z_lower_threshold = -2
         self.spread_history2 = []
-
+        self.djembes_reversion_param = -0.2
+        self.djembes_adverse_volume = 30
     def take_best_orders(
         self,
         product: str,
@@ -155,8 +160,8 @@ class Trader:
         sell_order_volume: int,
         prevent_adverse: bool = False,
         adverse_volume: int = 0,
-    ):
-        position_limit = self.LIMIT[product]
+    ) -> (int, int):
+        position_limit = self.position_limit[product]
 
         if len(order_depth.sell_orders) != 0:
             best_ask = min(order_depth.sell_orders.keys())
@@ -203,49 +208,49 @@ class Trader:
         buy_order_volume: int,
         sell_order_volume: int,
     ):
-        buy_quantity = self.LIMIT[product] - (position + buy_order_volume)
+        buy_quantity = self.position_limit[product] - (position + buy_order_volume)
         if buy_quantity > 0:
             orders.append(Order(product, round(bid), buy_quantity))  # Buy order
 
-        sell_quantity = self.LIMIT[product] + (position - sell_order_volume)
+        sell_quantity = self.position_limit[product] + (position - sell_order_volume)
         if sell_quantity > 0:
             orders.append(Order(product, round(ask), -sell_quantity))  # Sell order
         return buy_order_volume, sell_order_volume
 
     def take_orders(
         self,
+        orders,
         product: str,
         order_depth: OrderDepth,
         fair_value: float,
         take_width: float,
         position: int,
-        
+        buy_order_volume,
+        sell_order_volume,
         prevent_adverse: bool = False,
         adverse_volume: int = 0,
-    ) -> (List[Order], int, int):
-        orders: List[Order] = []
-        buy_order_volume = 0
-        sell_order_volume = 0
+    ):
 
-        buy_order_volume, sell_order_volume = self.take_best_orders(
+        buy_order_volume[product], sell_order_volume[product] = self.take_best_orders(
             product,
             fair_value,
             take_width,
             orders,
             order_depth,
             position,
-            buy_order_volume,
-            sell_order_volume,
+            buy_order_volume[product],
+            sell_order_volume[product],
             prevent_adverse,
-            adverse_volume,
+            adverse_volume
         )
-        return orders, buy_order_volume, sell_order_volume
+        return buy_order_volume, sell_order_volume
     
     def make_orders(
             
 
             
         self,
+        orders,
         product,
         order_depth: OrderDepth,
         fair_value: float,
@@ -259,7 +264,6 @@ class Trader:
         soft_position_limit: int = 0,
         # will penny all other levels with higher edge
     ):
-        orders: List[Order] = []
         asks_above_fair = [
             price
             for price in order_depth.sell_orders.keys()
@@ -306,42 +310,73 @@ class Trader:
 
         return orders, buy_order_volume, sell_order_volume
     
-    def clear_position(self, fair_value, width, order_depths, orders, pos, product, buy_order_volume, sell_order_volume):
-        position_after_take = pos.get(product, 0) + buy_order_volume.get(product, 0) - sell_order_volume.get(product, 0)
+    def clear_position_order(
+        self,
+        product: str,
+        fair_value: float,
+        width: int,
+        orders: List[Order],
+        order_depth: OrderDepth,
+        position: int,
+        buy_order_volume: int,
+        sell_order_volume: int,
+    ) -> List[Order]:
+        position_after_take = position + buy_order_volume - sell_order_volume
         fair_for_bid = round(fair_value - width)
         fair_for_ask = round(fair_value + width)
 
-        buy_quantity = self.position_limit[product] - (pos.get(product, 0) + buy_order_volume.get(product, 0))
-        sell_quantity = self.position_limit[product] + (pos.get(product, 0) - sell_order_volume.get(product, 0))
+        buy_quantity = self.position_limit[product] - (position + buy_order_volume)
+        sell_quantity = self.position_limit[product] + (position - sell_order_volume)
 
         if position_after_take > 0:
             # Aggregate volume from all buy orders with price greater than fair_for_ask
             clear_quantity = sum(
                 volume
-                for price, volume in order_depths[product].buy_orders.items()
+                for price, volume in order_depth.buy_orders.items()
                 if price >= fair_for_ask
             )
             clear_quantity = min(clear_quantity, position_after_take)
             sent_quantity = min(sell_quantity, clear_quantity)
             if sent_quantity > 0:
                 orders.append(Order(product, fair_for_ask, -abs(sent_quantity)))
-                sell_order_volume[product] += abs(sent_quantity)
+                sell_order_volume += abs(sent_quantity)
 
         if position_after_take < 0:
             # Aggregate volume from all sell orders with price lower than fair_for_bid
             clear_quantity = sum(
                 abs(volume)
-                for price, volume in order_depths[product].sell_orders.items()
+                for price, volume in order_depth.sell_orders.items()
                 if price <= fair_for_bid
             )
             clear_quantity = min(clear_quantity, abs(position_after_take))
             sent_quantity = min(buy_quantity, clear_quantity)
             if sent_quantity > 0:
                 orders.append(Order(product, fair_for_bid, abs(sent_quantity)))
-                buy_order_volume[product] += abs(sent_quantity)
+                buy_order_volume += abs(sent_quantity)
 
         return orders, buy_order_volume, sell_order_volume
-
+    def clear_orders(
+        self,
+        orders,
+        product: str,
+        order_depth: OrderDepth,
+        fair_value: float,
+        clear_width: int,
+        position: int,
+        buy_order_volume: int,
+        sell_order_volume: int,
+    ) :
+        orders, buy_order_volume[product], sell_order_volume[product] = self.clear_position_order(
+            product,
+            fair_value,
+            clear_width,
+            orders,
+            order_depth,
+            position,
+            buy_order_volume[product],
+            sell_order_volume[product],
+        )
+        return orders, buy_order_volume, sell_order_volume
 
     def wmid(self, order_depths, product):
         order_depth = order_depths[product]
@@ -349,7 +384,8 @@ class Trader:
         best_ask = min(order_depth.sell_orders.keys())
         best_bid_vol = abs(order_depth.buy_orders[best_bid])
         best_ask_vol = abs(order_depth.sell_orders[best_ask])
-        return (best_bid * best_ask_vol + best_ask * best_bid_vol) / (best_bid_vol + best_ask_vol)
+        # return (best_bid * best_ask_vol + best_ask * best_bid_vol) / (best_bid_vol + best_ask_vol)
+        return (best_bid + best_ask) /2
     
     def implied_basket_volume(self, order_depths, pos, basket_weights, prods):
         depths = {p: order_depths[p] for p in prods}
@@ -370,6 +406,16 @@ class Trader:
 
         return buy_volume, sell_volume
 
+    def update_price_history(self, order_depths, prods):
+        depths = {p: order_depths[p] for p in prods}
+        if not all(d.buy_orders and d.sell_orders for d in depths.values()):
+            return None
+        mids = {p: self.wmid(order_depths, p) for p in prods}
+        for p in prods:
+            if p not in self.price_history.keys():
+               self.price_history[p] = []
+            else:
+                self.price_history[p].append(mids[p])
     def etf_b1(self, order_depths, pos, orders, buy_order_volume, sell_order_volume, prods):
     
     
@@ -382,11 +428,6 @@ class Trader:
         mids = {p: self.wmid(order_depths, p) for p in prods}
         bid_vols = {p: depths[p].buy_orders[bids[p]] for p in prods}
         ask_vols = {p: depths[p].sell_orders[asks[p]] for p in prods}
-        for p in prods:
-            if p not in self.price_history.keys():
-               self.price_history[p] = []
-            else:
-                self.price_history[p].append(mids[p])
         # TODO: check whether to change the method for calculating nav
         nav = 6 * mids["CROISSANTS"] + 3 * mids["JAMS"] + mids["DJEMBES"]
         spread = mids["PICNIC_BASKET1"] - nav
@@ -514,28 +555,234 @@ class Trader:
         orders.append(Order(product, best_bid, -vol))
         return orders, buy_order_volume, sell_order_volume
 
+    def djembes_fair_value(self, order_depths: OrderDepth, product):
+        order_depth = order_depths[product]
+        if len(order_depth.sell_orders) != 0 and len(order_depth.buy_orders) != 0:
+            best_ask = min(order_depth.sell_orders.keys())
+            best_bid = max(order_depth.buy_orders.keys())
+            filtered_ask = [
+                price
+                for price in order_depth.sell_orders.keys()
+                if abs(order_depth.sell_orders[price])
+                >= self.djembes_adverse_volume
+            ]
+            filtered_bid = [
+                price
+                for price in order_depth.buy_orders.keys()
+                if abs(order_depth.buy_orders[price])
+                >= self.djembes_adverse_volume
+            ]
+            mm_ask = min(filtered_ask) if len(filtered_ask) > 0 else None
+            mm_bid = max(filtered_bid) if len(filtered_bid) > 0 else None
+            if mm_ask == None or mm_bid == None:
+                mmmid_price = self.price_history[product][-1]
+            else:
+                mmmid_price = (best_ask + best_bid) / 2
 
+            if len(self.price_history[product]) >= 2:
+                last_price = self.price_history[product][-1]
+                last_returns = (mmmid_price - last_price) / last_price
+                pred_returns = (
+                    last_returns * self.djembes_reversion_param
+                )
+                fair = mmmid_price + (mmmid_price * pred_returns)
+            else:
+                fair = mmmid_price
+            return fair
+        return None
+
+    def make_djembes_orders(
+        self,
+        orders,
+        order_depth: OrderDepth,
+        fair_value: float,
+        join_edge: float,
+        default_edge, 
+        position: int,
+        buy_order_volume,
+        sell_order_volume,
+        product,
+        disregard_edge = 15,
+        manage_position = False,
+        soft_position_limit: int = 0,
+    ):
+        
+        asks_above_fair = [
+            price
+            for price in order_depth.sell_orders.keys()
+            if price > fair_value + disregard_edge
+        ]
+        bids_below_fair = [
+            price
+            for price in order_depth.buy_orders.keys()
+            if price < fair_value - disregard_edge
+        ]
+
+        best_ask_above_fair = min(asks_above_fair) if len(asks_above_fair) > 0 else None
+        best_bid_below_fair = max(bids_below_fair) if len(bids_below_fair) > 0 else None
+
+        ask = round(fair_value + default_edge)
+        if best_ask_above_fair != None:
+            if abs(best_ask_above_fair - fair_value) <= join_edge:
+                ask = best_ask_above_fair  # join
+            else:
+                ask = best_ask_above_fair - 1  # penny
+
+        bid = round(fair_value - default_edge)
+        if best_bid_below_fair != None:
+            if abs(fair_value - best_bid_below_fair) <= join_edge:
+                bid = best_bid_below_fair
+            else:
+                bid = best_bid_below_fair + 1
+
+        if manage_position:
+            if position > soft_position_limit:
+                ask -= 1
+            elif position < -1 * soft_position_limit:
+                bid += 1
+        buy_order_volume[product], sell_order_volume[product] = self.market_make(
+            product,
+            orders,
+            bid,
+            ask,
+            position,
+            buy_order_volume[product],
+            sell_order_volume[product],
+        )
+
+        return orders, buy_order_volume, sell_order_volume
+    
+    def djembes(self, state, product, orders, buy_order_volume, sell_order_volume):
+        if product in state.order_depths:
+            position = ( state.position[product] if product in state.position else 0)
+            djembes_fair_value = self.djembes_fair_value(state.order_depths, product, )
+            self.take_orders(
+                orders,
+                product,
+                state.order_depths[product],
+                djembes_fair_value,
+                1,
+                position,
+                buy_order_volume,
+                sell_order_volume,
+                True,
+                self.djembes_adverse_volume
+            )
+            self.clear_orders(
+                orders,
+                product,
+                state.order_depths[product],
+                djembes_fair_value,
+                1,
+                position,
+                buy_order_volume,
+                sell_order_volume,
+            )
+        
+            self.make_orders(
+                orders,
+                product,
+                state.order_depths[product],
+                djembes_fair_value,
+                position,
+                buy_order_volume[product],
+                sell_order_volume[product],
+                0,
+                1,
+                15
+            )
+        return orders, buy_order_volume, sell_order_volume
+    def make_rainforest_resin_orders(
+        self,
+        order_depth: OrderDepth,
+        fair_value: int,
+        position: int,
+        buy_order_volume: int,
+        sell_order_volume: int,
+        volume_limit: int,
+        product,
+        orders
+    ) :
+        if(len(order_depth.sell_orders.keys()) == 0):
+            return orders, buy_order_volume, sell_order_volume
+        baaf = [price for price in order_depth.sell_orders.keys() if price > fair_value + 1]
+        baaf = min(baaf) if len(baaf) > 0 else 1e6
+        bbbf = [price for price in order_depth.buy_orders.keys() if price < fair_value - 1]
+        bbbf = max(bbbf) if len(bbbf) > 0 else 0
+
+        if baaf <= fair_value + 2:
+            if position <= volume_limit:
+                baaf = fair_value + 3  # still want edge 2 if position is not a concern
+
+        if bbbf >= fair_value - 2:
+            if position >= -volume_limit:
+                bbbf = fair_value - 3  # still want edge 2 if position is not a concern
+
+        buy_order_volume[product], sell_order_volume[product] = self.market_make(
+            product,
+            orders,
+            bbbf + 1,
+            baaf - 1,
+            position,
+            buy_order_volume[product],
+            sell_order_volume[product],
+        )
+        return orders, buy_order_volume, sell_order_volume
+    def rainforest_resin(self, state, product, orders, buy_order_volume, sell_order_volume):
+        if product in state.order_depths:
+            position = (
+                state.position[product]
+                if product in state.position
+                else 0
+            )
+            orders, buy_order_volume, sell_order_volume = (
+                self.take_orders(
+                    orders,
+                    product,
+                    state.order_depths[product],
+                    10000,
+                    1,
+                    position,
+                    buy_order_volume,
+                    sell_order_volume
+                )
+            )
+            orders, buy_order_volume, sell_order_volume = self.make_rainforest_resin_orders(
+                state.order_depths[product],
+                10000,
+                position,
+                buy_order_volume,
+                sell_order_volume,
+                50,
+                product,
+                orders
+            )
+        return orders, buy_order_volume, sell_order_volume
+    
     def run(self, state: TradingState):
+        traderObject = {}
+        if state.traderData != None and state.traderData != "":
+            traderObject = jsonpickle.decode(state.traderData)
         orders = []
         buy_order_volume = {}
         sell_order_volume = {}
         prods = ["PICNIC_BASKET1", "CROISSANTS", "JAMS", "DJEMBES"]
         prods2 = ["PICNIC_BASKET2", "CROISSANTS", "JAMS"]
-        for p in prods:
-            buy_order_volume[p] = 0
-            sell_order_volume[p] = 0
-        for p in prods2:
+        for p in ["PICNIC_BASKET1", "PICNIC_BASKET2", "CROISSANTS", "JAMS", "DJEMBES", "KELP", 'RAINFOREST_RESIN']:
             buy_order_volume[p] = 0
             sell_order_volume[p] = 0
         if not all(p in state.order_depths for p in prods):
             return {}, 0, ""
-        orders, buy_order_volume, sell_order_volume = self.etf_b1(state.order_depths, state.position, orders, buy_order_volume, sell_order_volume, prods)
-        orders, buy_order_volume, sell_order_volume = self.etf_b2(state.order_depths, state.position, orders, buy_order_volume, sell_order_volume, prods2)
-        orders, buy_order_volume, sell_order_volume = self.jams(orders, state.order_depths, state.position, buy_order_volume, sell_order_volume, 'CROISSANTS')
-        orders, buy_order_volume, sell_order_volume = self.jams(orders, state.order_depths, state.position, buy_order_volume, sell_order_volume, 'JAMS')
+        self.update_price_history(state.order_depths, ["PICNIC_BASKET1", "PICNIC_BASKET2", "CROISSANTS", "JAMS", "DJEMBES", "KELP", 'RAINFOREST_RESIN'])
+        # orders, buy_order_volume, sell_order_volume = self.etf_b1(state.order_depths, state.position, orders, buy_order_volume, sell_order_volume, prods)
+        # orders, buy_order_volume, sell_order_volume = self.etf_b2(state.order_depths, state.position, orders, buy_order_volume, sell_order_volume, prods2)
+        # orders, buy_order_volume, sell_order_volume = self.jams(orders, state.order_depths, state.position, buy_order_volume, sell_order_volume, 'CROISSANTS')
+        # orders, buy_order_volume, sell_order_volume = self.jams(orders, state.order_depths, state.position, buy_order_volume, sell_order_volume, 'JAMS')
+        orders, buy_order_volume, sell_order_volume = self.djembes(state, 'DJEMBES', orders, buy_order_volume, sell_order_volume)
+        # orders, buy_order_volume, sell_order_volume = self.rainforest_resin(state, 'RAINFOREST_RESIN', orders, buy_order_volume, sell_order_volume)
         result = {}
         for o in orders:
             result.setdefault(o.symbol, []).append(o)
-
+        traderData = jsonpickle.encode(traderObject)
         logger.flush(state, result, 0, "")
-        return result, 0, ""
+        return result, 1, traderData
