@@ -116,7 +116,8 @@ logger = Logger()
 
 class Trader:
     def __init__(self):
-        self.volume = 30
+        self.volume = 30 #etf
+        self.squid_volume = 6
         self.threshold = 1.0
         self.position_limit = {
             "PICNIC_BASKET1": 60,
@@ -148,6 +149,91 @@ class Trader:
         self.spread_history2 = []
         self.djembes_reversion_param = -0.2
         self.djembes_adverse_volume = 30
+        self.kelp_reversion_param = -0.229
+        self.kelp_adverse_volume = 20
+        self.squid_window = 18
+        self.squid_momentum_threshold = 10
+        self.croissant_volume = 35
+        self.croissant_window = 70
+        self.pred_threshold = 1.8 #kuasong
+    
+    def squid(self, state, orders, buy_order_volume, sell_order_volume, product = 'SQUID_INK'):
+    
+
+        if product not in state.order_depths:
+            return orders, buy_order_volume, sell_order_volume
+
+        order_depth = state.order_depths[product]
+        if not order_depth.buy_orders or not order_depth.sell_orders:
+            return orders, buy_order_volume, sell_order_volume
+
+        best_bid = max(order_depth.buy_orders.keys())
+        best_ask = min(order_depth.sell_orders.keys())
+        mid_price = (best_bid + best_ask) / 2
+
+        if len(self.price_history[product]) <= self.squid_window:
+            return orders, buy_order_volume, sell_order_volume
+
+        momentum = self.price_history[product][-1] - self.price_history[product][-self.squid_window]
+
+        pos = state.position.get(product, 0)
+
+        if momentum > self.squid_momentum_threshold and pos < self.position_limit[product]:
+            ask_volume = order_depth.sell_orders.get(best_ask, 0)
+            volume = min(self.squid_volume, -ask_volume, self.position_limit[product] - pos)
+            if volume > 0:
+                orders.append(Order(product, best_ask, volume))
+                buy_order_volume[product] += volume
+
+        elif momentum < -self.squid_momentum_threshold and pos > -self.position_limit[product]:
+            bid_volume = order_depth.buy_orders.get(best_bid, 0)
+            volume = min(self.squid_volume, bid_volume, pos + self.position_limit[product])
+            if volume > 0:
+                orders.append(Order(product, best_bid, -volume))
+                sell_order_volume[product] += volume
+        return orders, buy_order_volume, sell_order_volume
+
+    def croissant(self, state, orders, buy_order_volume, sell_order_volume, product = 'CROISSANTS'):
+        if product not in state.order_depths:
+            return orders, buy_order_volume, sell_order_volume
+
+        order_depth = state.order_depths[product]
+        if not order_depth.buy_orders or not order_depth.sell_orders:
+            return orders, buy_order_volume, sell_order_volume
+
+        best_bid = max(order_depth.buy_orders)
+        best_ask = min(order_depth.sell_orders)
+        mid_price = (best_bid + best_ask) / 2
+
+        if len(self.price_history[product]) > self.croissant_window * 2:
+            self.price_history[product] = self.price_history[product][-self.croissant_window * 2:]
+
+        if len(self.price_history[product]) <= self.croissant_window:
+            return orders, buy_order_volume, sell_order_volume
+
+        recent = np.array(self.price_history[product][-self.croissant_window:])
+        x = np.arange(self.croissant_window)
+        A = np.vstack([x, np.ones(len(x))]).T
+        slope, intercept = np.linalg.lstsq(A, recent, rcond=None)[0]
+
+        predicted = slope * self.croissant_window + intercept
+        diff = predicted - mid_price
+
+        pos = state.position.get(product, 0)
+
+        if diff > self.pred_threshold and pos < self.position_limit[product]:
+            ask_volume = -order_depth.sell_orders.get(best_ask, 0)
+            volume = min(self.croissant_volume, ask_volume, self.position_limit[product] - pos)
+            if volume > 0:
+                orders.append(Order(product, best_ask, volume))
+
+        elif diff < -self.pred_threshold and pos > -self.position_limit[product]:
+            bid_volume = order_depth.buy_orders.get(best_bid, 0)
+            volume = min(self.croissant_volume, bid_volume, pos + self.position_limit[product])
+            if volume > 0:
+                orders.append(Order(product, best_bid, -volume))
+        return orders, buy_order_volume, sell_order_volume
+    
     def take_best_orders(
         self,
         product: str,
@@ -243,7 +329,7 @@ class Trader:
             prevent_adverse,
             adverse_volume
         )
-        return buy_order_volume, sell_order_volume
+        return orders, buy_order_volume, sell_order_volume
     
     def make_orders(
             
@@ -384,8 +470,10 @@ class Trader:
         best_ask = min(order_depth.sell_orders.keys())
         best_bid_vol = abs(order_depth.buy_orders[best_bid])
         best_ask_vol = abs(order_depth.sell_orders[best_ask])
-        # return (best_bid * best_ask_vol + best_ask * best_bid_vol) / (best_bid_vol + best_ask_vol)
-        return (best_bid + best_ask) /2
+        if(product in ["PICNIC_BASKET1", "PICNIC_BASKET2", "JAMS"]):
+            return (best_bid * best_ask_vol + best_ask * best_bid_vol) / (best_bid_vol + best_ask_vol)
+        else:
+            return (best_bid + best_ask) /2
     
     def implied_basket_volume(self, order_depths, pos, basket_weights, prods):
         depths = {p: order_depths[p] for p in prods}
@@ -417,7 +505,8 @@ class Trader:
             else:
                 self.price_history[p].append(mids[p])
     def etf_b1(self, order_depths, pos, orders, buy_order_volume, sell_order_volume, prods):
-    
+        if not all(p in order_depths for p in prods):
+            return orders, buy_order_volume, sell_order_volume
     
         depths = {p: order_depths[p] for p in prods}
         if not all(d.buy_orders and d.sell_orders for d in depths.values()):
@@ -479,11 +568,11 @@ class Trader:
         return orders, buy_order_volume, sell_order_volume
     
     def etf_b2(self, order_depths, pos, orders, buy_order_volume, sell_order_volume, prods):
-    
+        
     
         depths = {p: order_depths[p] for p in prods}
         if not all(d.buy_orders and d.sell_orders for d in depths.values()):
-            return {}, 0, ""
+            return orders, buy_order_volume, sell_order_volume
 
         bids = {p: max(depths[p].buy_orders.keys()) for p in prods}
         asks = {p: min(depths[p].sell_orders.keys()) for p in prods}
@@ -555,7 +644,7 @@ class Trader:
         orders.append(Order(product, best_bid, -vol))
         return orders, buy_order_volume, sell_order_volume
 
-    def djembes_fair_value(self, order_depths: OrderDepth, product):
+    def djembes_fair_value(self, order_depths: OrderDepth, product, traderObject):
         order_depth = order_depths[product]
         if len(order_depth.sell_orders) != 0 and len(order_depth.buy_orders) != 0:
             best_ask = min(order_depth.sell_orders.keys())
@@ -575,12 +664,15 @@ class Trader:
             mm_ask = min(filtered_ask) if len(filtered_ask) > 0 else None
             mm_bid = max(filtered_bid) if len(filtered_bid) > 0 else None
             if mm_ask == None or mm_bid == None:
-                mmmid_price = self.price_history[product][-1]
+                if traderObject.get("DJEMBES_last_price", None) == None:
+                    mmmid_price = (best_ask + best_bid) / 2
+                else:
+                    mmmid_price = traderObject["DJEMBES_last_price"]
             else:
-                mmmid_price = (best_ask + best_bid) / 2
+                mmmid_price = (mm_ask + mm_bid) / 2
 
-            if len(self.price_history[product]) >= 2:
-                last_price = self.price_history[product][-1]
+            if traderObject.get("DJEMBES_last_price", None) != None:
+                last_price = traderObject["DJEMBES_last_price"]
                 last_returns = (mmmid_price - last_price) / last_price
                 pred_returns = (
                     last_returns * self.djembes_reversion_param
@@ -588,9 +680,50 @@ class Trader:
                 fair = mmmid_price + (mmmid_price * pred_returns)
             else:
                 fair = mmmid_price
+            traderObject["DJEMBES_last_price"] = mmmid_price
             return fair
         return None
+    
+    def KELP_fair_value(self, order_depths: OrderDepth, product, traderObject) -> float:
+        order_depth = order_depths[product]
+        if len(order_depth.sell_orders) != 0 and len(order_depth.buy_orders) != 0:
+            best_ask = min(order_depth.sell_orders.keys())
+            best_bid = max(order_depth.buy_orders.keys())
+            filtered_ask = [
+                price
+                for price in order_depth.sell_orders.keys()
+                if abs(order_depth.sell_orders[price])
+                >= self.kelp_adverse_volume
+            ]
+            filtered_bid = [
+                price
+                for price in order_depth.buy_orders.keys()
+                if abs(order_depth.buy_orders[price])
+                >= self.kelp_adverse_volume
+            ]
+            mm_ask = min(filtered_ask) if len(filtered_ask) > 0 else None
+            mm_bid = max(filtered_bid) if len(filtered_bid) > 0 else None
+            if mm_ask == None or mm_bid == None:
+                if traderObject.get("KELP_last_price", None) == None:
+                    mmmid_price = (best_ask + best_bid) / 2
+                else:
+                    mmmid_price = traderObject["KELP_last_price"]
+            else:
+                mmmid_price = (mm_ask + mm_bid) / 2
 
+            if traderObject.get("KELP_last_price", None) != None:
+                last_price = traderObject["KELP_last_price"]
+                last_returns = (mmmid_price - last_price) / last_price
+                pred_returns = (
+                    last_returns * self.kelp_reversion_param
+                )
+                fair = mmmid_price + (mmmid_price * pred_returns)
+            else:
+                fair = mmmid_price
+            traderObject["KELP_last_price"] = mmmid_price
+            return fair
+        return None
+    
     def make_djembes_orders(
         self,
         orders,
@@ -652,10 +785,11 @@ class Trader:
 
         return orders, buy_order_volume, sell_order_volume
     
-    def djembes(self, state, product, orders, buy_order_volume, sell_order_volume):
+    def djembes(self, state, product, orders, buy_order_volume, sell_order_volume, traderObject):
+
         if product in state.order_depths:
             position = ( state.position[product] if product in state.position else 0)
-            djembes_fair_value = self.djembes_fair_value(state.order_depths, product, )
+            djembes_fair_value = self.djembes_fair_value(state.order_depths, product, traderObject)
             self.take_orders(
                 orders,
                 product,
@@ -687,11 +821,53 @@ class Trader:
                 position,
                 buy_order_volume[product],
                 sell_order_volume[product],
+                15,
                 0,
-                1,
-                15
+                1
             )
         return orders, buy_order_volume, sell_order_volume
+    
+    def kelp(self, state, product, orders, buy_order_volume, sell_order_volume, traderObject):
+        if product in state.order_depths:
+            position = ( state.position[product] if product in state.position else 0)
+            djembes_fair_value = self.KELP_fair_value(state.order_depths, product, traderObject)
+            self.take_orders(
+                orders,
+                product,
+                state.order_depths[product],
+                djembes_fair_value,
+                1,
+                position,
+                buy_order_volume,
+                sell_order_volume,
+                True,
+                self.djembes_adverse_volume
+            )
+            self.clear_orders(
+                orders,
+                product,
+                state.order_depths[product],
+                djembes_fair_value,
+                0,
+                position,
+                buy_order_volume,
+                sell_order_volume,
+            )
+        
+            self.make_orders(
+                orders,
+                product,
+                state.order_depths[product],
+                djembes_fair_value,
+                position,
+                buy_order_volume[product],
+                sell_order_volume[product],
+                1,
+                0,
+                1
+            )
+        return orders, buy_order_volume, sell_order_volume
+
     def make_rainforest_resin_orders(
         self,
         order_depth: OrderDepth,
@@ -768,18 +944,19 @@ class Trader:
         sell_order_volume = {}
         prods = ["PICNIC_BASKET1", "CROISSANTS", "JAMS", "DJEMBES"]
         prods2 = ["PICNIC_BASKET2", "CROISSANTS", "JAMS"]
-        for p in ["PICNIC_BASKET1", "PICNIC_BASKET2", "CROISSANTS", "JAMS", "DJEMBES", "KELP", 'RAINFOREST_RESIN']:
+        for p in ["PICNIC_BASKET1", "PICNIC_BASKET2", "CROISSANTS", "JAMS", "DJEMBES", "KELP", 'RAINFOREST_RESIN', 'SQUID_INK']:
             buy_order_volume[p] = 0
             sell_order_volume[p] = 0
-        if not all(p in state.order_depths for p in prods):
-            return {}, 0, ""
-        self.update_price_history(state.order_depths, ["PICNIC_BASKET1", "PICNIC_BASKET2", "CROISSANTS", "JAMS", "DJEMBES", "KELP", 'RAINFOREST_RESIN'])
-        # orders, buy_order_volume, sell_order_volume = self.etf_b1(state.order_depths, state.position, orders, buy_order_volume, sell_order_volume, prods)
-        # orders, buy_order_volume, sell_order_volume = self.etf_b2(state.order_depths, state.position, orders, buy_order_volume, sell_order_volume, prods2)
-        # orders, buy_order_volume, sell_order_volume = self.jams(orders, state.order_depths, state.position, buy_order_volume, sell_order_volume, 'CROISSANTS')
-        # orders, buy_order_volume, sell_order_volume = self.jams(orders, state.order_depths, state.position, buy_order_volume, sell_order_volume, 'JAMS')
-        orders, buy_order_volume, sell_order_volume = self.djembes(state, 'DJEMBES', orders, buy_order_volume, sell_order_volume)
-        # orders, buy_order_volume, sell_order_volume = self.rainforest_resin(state, 'RAINFOREST_RESIN', orders, buy_order_volume, sell_order_volume)
+        
+        self.update_price_history(state.order_depths, ["PICNIC_BASKET1", "PICNIC_BASKET2", "CROISSANTS", "JAMS", "DJEMBES", "KELP", 'RAINFOREST_RESIN', 'SQUID_INK'])
+        orders, buy_order_volume, sell_order_volume = self.etf_b1(state.order_depths, state.position, orders, buy_order_volume, sell_order_volume, prods)
+        orders, buy_order_volume, sell_order_volume = self.etf_b2(state.order_depths, state.position, orders, buy_order_volume, sell_order_volume, prods2)
+        orders, buy_order_volume, sell_order_volume = self.jams(orders, state.order_depths, state.position, buy_order_volume, sell_order_volume, 'JAMS')
+        orders, buy_order_volume, sell_order_volume = self.djembes(state, 'DJEMBES', orders, buy_order_volume, sell_order_volume, traderObject)
+        orders, buy_order_volume, sell_order_volume = self.kelp(state, 'KELP', orders, buy_order_volume, sell_order_volume, traderObject)
+        orders, buy_order_volume, sell_order_volume = self.rainforest_resin(state, 'RAINFOREST_RESIN', orders, buy_order_volume, sell_order_volume)
+        #orders, buy_order_volume, sell_order_volume = self.squid(state, orders, buy_order_volume, sell_order_volume, 'SQUID_INK')
+        orders, buy_order_volume, sell_order_volume = self.croissant(state, orders, buy_order_volume, sell_order_volume, 'CROISSANTS')
         result = {}
         for o in orders:
             result.setdefault(o.symbol, []).append(o)
