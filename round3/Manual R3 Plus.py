@@ -56,7 +56,7 @@ for average in range(250,320):
 for price2 in range(284, 319, 2):
     price1 = 199
     print("-------------------", price2, "-------------------")
-    for average in range(284,320):
+    for average in range(price2,320):
         profit = 0
         for turtle in turtle1:
             if price1 > turtle:
@@ -73,7 +73,7 @@ for price2 in range(284, 319, 2):
             elif price2 > turtle and price2 >= average:
                 profit += (320-price2)
         print("Average: ", average, " Profit: ", profit)
-
+    print()
 
 """
 Output: (just so you don't have to run it again)
@@ -185,9 +185,8 @@ Average:  316  Profit:  47328.33333333223
 Average:  317  Profit:  47318.31250000085
 Average:  318  Profit:  47313.16666666749
 Average:  319  Profit:  47311.2708333328
+
 ------------------- 286 -------------------
-Average:  284  Profit:  59925
-Average:  285  Profit:  59925
 Average:  286  Profit:  59925
 Average:  287  Profit:  58844.41435986278
 Average:  288  Profit:  57827.37370242163
@@ -222,11 +221,8 @@ Average:  316  Profit:  47331.539792388
 Average:  317  Profit:  47319.665224913224
 Average:  318  Profit:  47313.56747404816
 Average:  319  Profit:  47311.320934255345
+
 ------------------- 288 -------------------
-Average:  284  Profit:  59823
-Average:  285  Profit:  59823
-Average:  286  Profit:  59823
-Average:  287  Profit:  59823
 Average:  288  Profit:  59823
 Average:  289  Profit:  58686.2744140625
 Average:  290  Profit:  57620.5703125
@@ -259,13 +255,8 @@ Average:  316  Profit:  47335.4375
 Average:  317  Profit:  47321.3095703125
 Average:  318  Profit:  47314.0546875
 Average:  319  Profit:  47311.3818359375
+
 ------------------- 290 -------------------
-Average:  284  Profit:  59641
-Average:  285  Profit:  59641
-Average:  286  Profit:  59641
-Average:  287  Profit:  59641
-Average:  288  Profit:  59641
-Average:  289  Profit:  59641
 Average:  290  Profit:  59641
 Average:  291  Profit:  58448.64333333364
 Average:  292  Profit:  57335.746666665524
@@ -296,15 +287,8 @@ Average:  316  Profit:  47340.22666666564
 Average:  317  Profit:  47323.32999999952
 Average:  318  Profit:  47314.653333332084
 Average:  319  Profit:  47311.45666666576
+
 ------------------- 292 -------------------
-Average:  284  Profit:  59379
-Average:  285  Profit:  59379
-Average:  286  Profit:  59379
-Average:  287  Profit:  59379
-Average:  288  Profit:  59379
-Average:  289  Profit:  59379
-Average:  290  Profit:  59379
-Average:  291  Profit:  59379
 Average:  292  Profit:  59379
 Average:  293  Profit:  58131.62882653023
 Average:  294  Profit:  56973.31632653023
@@ -333,17 +317,8 @@ Average:  316  Profit:  47346.18367346977
 Average:  317  Profit:  47325.84311224496
 Average:  318  Profit:  47315.397959184505
 Average:  319  Profit:  47311.54974489924
+
 ------------------- 294 -------------------
-Average:  284  Profit:  59037
-Average:  285  Profit:  59037
-Average:  286  Profit:  59037
-Average:  287  Profit:  59037
-Average:  288  Profit:  59037
-Average:  289  Profit:  59037
-Average:  290  Profit:  59037
-Average:  291  Profit:  59037
-Average:  292  Profit:  59037
-Average:  293  Profit:  59037
 Average:  294  Profit:  59037
 Average:  295  Profit:  57735.371301775536
 Average:  296  Profit:  56533.81656804691
@@ -370,19 +345,8 @@ Average:  316  Profit:  47353.698224850945
 Average:  317  Profit:  47329.01331360807
 Average:  318  Profit:  47316.33727810719
 Average:  319  Profit:  47311.66715976217
+
 ------------------- 296 -------------------
-Average:  284  Profit:  58615
-Average:  285  Profit:  58615
-Average:  286  Profit:  58615
-Average:  287  Profit:  58615
-Average:  288  Profit:  58615
-Average:  289  Profit:  58615
-Average:  290  Profit:  58615
-Average:  291  Profit:  58615
-Average:  292  Profit:  58615
-Average:  293  Profit:  58615
-Average:  294  Profit:  58615
-Average:  295  Profit:  58615
 Average:  296  Profit:  58615
 Average:  297  Profit:  57260.05729166743
 Average:  298  Profit:  56017.95833333257
@@ -407,21 +371,8 @@ Average:  316  Profit:  47363.33333333257
 Average:  317  Profit:  47333.078125
 Average:  318  Profit:  47317.54166666743
 Average:  319  Profit:  47311.81770833257
+
 ------------------- 298 -------------------
-Average:  284  Profit:  58113
-Average:  285  Profit:  58113
-Average:  286  Profit:  58113
-Average:  287  Profit:  58113
-Average:  288  Profit:  58113
-Average:  289  Profit:  58113
-Average:  290  Profit:  58113
-Average:  291  Profit:  58113
-Average:  292  Profit:  58113
-Average:  293  Profit:  58113
-Average:  294  Profit:  58113
-Average:  295  Profit:  58113
-Average:  296  Profit:  58113
-Average:  297  Profit:  58113
 Average:  298  Profit:  58113
 Average:  299  Profit:  56705.94008264622
 Average:  300  Profit:  55426.70247934023
@@ -444,23 +395,8 @@ Average:  316  Profit:  47375.92561983595
 Average:  317  Profit:  47338.39049586662
 Average:  318  Profit:  47319.1157024786
 Average:  319  Profit:  47312.01446281027
+
 ------------------- 300 -------------------
-Average:  284  Profit:  57531
-Average:  285  Profit:  57531
-Average:  286  Profit:  57531
-Average:  287  Profit:  57531
-Average:  288  Profit:  57531
-Average:  289  Profit:  57531
-Average:  290  Profit:  57531
-Average:  291  Profit:  57531
-Average:  292  Profit:  57531
-Average:  293  Profit:  57531
-Average:  294  Profit:  57531
-Average:  295  Profit:  57531
-Average:  296  Profit:  57531
-Average:  297  Profit:  57531
-Average:  298  Profit:  57531
-Average:  299  Profit:  57531
 Average:  300  Profit:  57531
 Average:  301  Profit:  56073.372499999554
 Average:  302  Profit:  54761.38000000089
@@ -481,25 +417,8 @@ Average:  316  Profit:  47392.760000001785
 Average:  317  Profit:  47345.49249999866
 Average:  318  Profit:  47321.219999998364
 Average:  319  Profit:  47312.27750000119
+
 ------------------- 302 -------------------
-Average:  284  Profit:  56869
-Average:  285  Profit:  56869
-Average:  286  Profit:  56869
-Average:  287  Profit:  56869
-Average:  288  Profit:  56869
-Average:  289  Profit:  56869
-Average:  290  Profit:  56869
-Average:  291  Profit:  56869
-Average:  292  Profit:  56869
-Average:  293  Profit:  56869
-Average:  294  Profit:  56869
-Average:  295  Profit:  56869
-Average:  296  Profit:  56869
-Average:  297  Profit:  56869
-Average:  298  Profit:  56869
-Average:  299  Profit:  56869
-Average:  300  Profit:  56869
-Average:  301  Profit:  56869
 Average:  302  Profit:  56869
 Average:  303  Profit:  55362.8611111092
 Average:  304  Profit:  54023.88888889037
@@ -518,27 +437,8 @@ Average:  316  Profit:  47415.88888888994
 Average:  317  Profit:  47355.25000000129
 Average:  318  Profit:  47324.11111111221
 Average:  319  Profit:  47312.63888888951
+
 ------------------- 304 -------------------
-Average:  284  Profit:  56127
-Average:  285  Profit:  56127
-Average:  286  Profit:  56127
-Average:  287  Profit:  56127
-Average:  288  Profit:  56127
-Average:  289  Profit:  56127
-Average:  290  Profit:  56127
-Average:  291  Profit:  56127
-Average:  292  Profit:  56127
-Average:  293  Profit:  56127
-Average:  294  Profit:  56127
-Average:  295  Profit:  56127
-Average:  296  Profit:  56127
-Average:  297  Profit:  56127
-Average:  298  Profit:  56127
-Average:  299  Profit:  56127
-Average:  300  Profit:  56127
-Average:  301  Profit:  56127
-Average:  302  Profit:  56127
-Average:  303  Profit:  56127
 Average:  304  Profit:  56127
 Average:  305  Profit:  54575.16015625
 Average:  306  Profit:  53217.03125
@@ -555,29 +455,8 @@ Average:  316  Profit:  47448.75
 Average:  317  Profit:  47369.11328125
 Average:  318  Profit:  47328.21875
 Average:  319  Profit:  47313.15234375
+
 ------------------- 306 -------------------
-Average:  284  Profit:  55305
-Average:  285  Profit:  55305
-Average:  286  Profit:  55305
-Average:  287  Profit:  55305
-Average:  288  Profit:  55305
-Average:  289  Profit:  55305
-Average:  290  Profit:  55305
-Average:  291  Profit:  55305
-Average:  292  Profit:  55305
-Average:  293  Profit:  55305
-Average:  294  Profit:  55305
-Average:  295  Profit:  55305
-Average:  296  Profit:  55305
-Average:  297  Profit:  55305
-Average:  298  Profit:  55305
-Average:  299  Profit:  55305
-Average:  300  Profit:  55305
-Average:  301  Profit:  55305
-Average:  302  Profit:  55305
-Average:  303  Profit:  55305
-Average:  304  Profit:  55305
-Average:  305  Profit:  55305
 Average:  306  Profit:  55305
 Average:  307  Profit:  53711.443877550766
 Average:  308  Profit:  52345.122448980524
@@ -592,31 +471,8 @@ Average:  316  Profit:  47497.44897959387
 Average:  317  Profit:  47389.658163265645
 Average:  318  Profit:  47334.306122449234
 Average:  319  Profit:  47313.913265304596
+
 ------------------- 308 -------------------
-Average:  284  Profit:  54403
-Average:  285  Profit:  54403
-Average:  286  Profit:  54403
-Average:  287  Profit:  54403
-Average:  288  Profit:  54403
-Average:  289  Profit:  54403
-Average:  290  Profit:  54403
-Average:  291  Profit:  54403
-Average:  292  Profit:  54403
-Average:  293  Profit:  54403
-Average:  294  Profit:  54403
-Average:  295  Profit:  54403
-Average:  296  Profit:  54403
-Average:  297  Profit:  54403
-Average:  298  Profit:  54403
-Average:  299  Profit:  54403
-Average:  300  Profit:  54403
-Average:  301  Profit:  54403
-Average:  302  Profit:  54403
-Average:  303  Profit:  54403
-Average:  304  Profit:  54403
-Average:  305  Profit:  54403
-Average:  306  Profit:  54403
-Average:  307  Profit:  54403
 Average:  308  Profit:  54403
 Average:  309  Profit:  52773.645833332856
 Average:  310  Profit:  51415.166666667144
@@ -629,33 +485,8 @@ Average:  316  Profit:  47573.666666667144
 Average:  317  Profit:  47421.8125
 Average:  318  Profit:  47343.833333332856
 Average:  319  Profit:  47315.104166667144
+
 ------------------- 310 -------------------
-Average:  284  Profit:  53421
-Average:  285  Profit:  53421
-Average:  286  Profit:  53421
-Average:  287  Profit:  53421
-Average:  288  Profit:  53421
-Average:  289  Profit:  53421
-Average:  290  Profit:  53421
-Average:  291  Profit:  53421
-Average:  292  Profit:  53421
-Average:  293  Profit:  53421
-Average:  294  Profit:  53421
-Average:  295  Profit:  53421
-Average:  296  Profit:  53421
-Average:  297  Profit:  53421
-Average:  298  Profit:  53421
-Average:  299  Profit:  53421
-Average:  300  Profit:  53421
-Average:  301  Profit:  53421
-Average:  302  Profit:  53421
-Average:  303  Profit:  53421
-Average:  304  Profit:  53421
-Average:  305  Profit:  53421
-Average:  306  Profit:  53421
-Average:  307  Profit:  53421
-Average:  308  Profit:  53421
-Average:  309  Profit:  53421
 Average:  310  Profit:  53421
 Average:  311  Profit:  51765.19000000053
 Average:  312  Profit:  50439.3200000016
@@ -666,35 +497,8 @@ Average:  316  Profit:  47702.039999999644
 Average:  317  Profit:  47475.969999998044
 Average:  318  Profit:  47359.88000000107
 Average:  319  Profit:  47317.110000001245
+
 ------------------- 312 -------------------
-Average:  284  Profit:  52359
-Average:  285  Profit:  52359
-Average:  286  Profit:  52359
-Average:  287  Profit:  52359
-Average:  288  Profit:  52359
-Average:  289  Profit:  52359
-Average:  290  Profit:  52359
-Average:  291  Profit:  52359
-Average:  292  Profit:  52359
-Average:  293  Profit:  52359
-Average:  294  Profit:  52359
-Average:  295  Profit:  52359
-Average:  296  Profit:  52359
-Average:  297  Profit:  52359
-Average:  298  Profit:  52359
-Average:  299  Profit:  52359
-Average:  300  Profit:  52359
-Average:  301  Profit:  52359
-Average:  302  Profit:  52359
-Average:  303  Profit:  52359
-Average:  304  Profit:  52359
-Average:  305  Profit:  52359
-Average:  306  Profit:  52359
-Average:  307  Profit:  52359
-Average:  308  Profit:  52359
-Average:  309  Profit:  52359
-Average:  310  Profit:  52359
-Average:  311  Profit:  52359
 Average:  312  Profit:  52359
 Average:  313  Profit:  50692.765625
 Average:  314  Profit:  49440.625
@@ -703,114 +507,22 @@ Average:  316  Profit:  47942.0
 Average:  317  Profit:  47577.203125
 Average:  318  Profit:  47389.875
 Average:  319  Profit:  47320.859375
+
 ------------------- 314 -------------------
-Average:  284  Profit:  51217
-Average:  285  Profit:  51217
-Average:  286  Profit:  51217
-Average:  287  Profit:  51217
-Average:  288  Profit:  51217
-Average:  289  Profit:  51217
-Average:  290  Profit:  51217
-Average:  291  Profit:  51217
-Average:  292  Profit:  51217
-Average:  293  Profit:  51217
-Average:  294  Profit:  51217
-Average:  295  Profit:  51217
-Average:  296  Profit:  51217
-Average:  297  Profit:  51217
-Average:  298  Profit:  51217
-Average:  299  Profit:  51217
-Average:  300  Profit:  51217
-Average:  301  Profit:  51217
-Average:  302  Profit:  51217
-Average:  303  Profit:  51217
-Average:  304  Profit:  51217
-Average:  305  Profit:  51217
-Average:  306  Profit:  51217
-Average:  307  Profit:  51217
-Average:  308  Profit:  51217
-Average:  309  Profit:  51217
-Average:  310  Profit:  51217
-Average:  311  Profit:  51217
-Average:  312  Profit:  51217
-Average:  313  Profit:  51217
 Average:  314  Profit:  51217
 Average:  315  Profit:  49571.41666666456
 Average:  316  Profit:  48468.33333333544
 Average:  317  Profit:  47799.25
 Average:  318  Profit:  47455.66666666456
 Average:  319  Profit:  47329.08333333544
+
 ------------------- 316 -------------------
-Average:  284  Profit:  49995
-Average:  285  Profit:  49995
-Average:  286  Profit:  49995
-Average:  287  Profit:  49995
-Average:  288  Profit:  49995
-Average:  289  Profit:  49995
-Average:  290  Profit:  49995
-Average:  291  Profit:  49995
-Average:  292  Profit:  49995
-Average:  293  Profit:  49995
-Average:  294  Profit:  49995
-Average:  295  Profit:  49995
-Average:  296  Profit:  49995
-Average:  297  Profit:  49995
-Average:  298  Profit:  49995
-Average:  299  Profit:  49995
-Average:  300  Profit:  49995
-Average:  301  Profit:  49995
-Average:  302  Profit:  49995
-Average:  303  Profit:  49995
-Average:  304  Profit:  49995
-Average:  305  Profit:  49995
-Average:  306  Profit:  49995
-Average:  307  Profit:  49995
-Average:  308  Profit:  49995
-Average:  309  Profit:  49995
-Average:  310  Profit:  49995
-Average:  311  Profit:  49995
-Average:  312  Profit:  49995
-Average:  313  Profit:  49995
-Average:  314  Profit:  49995
-Average:  315  Profit:  49995
 Average:  316  Profit:  49995
 Average:  317  Profit:  48443.3125
 Average:  318  Profit:  47646.5
 Average:  319  Profit:  47352.9375
+
 ------------------- 318 -------------------
-Average:  284  Profit:  48693
-Average:  285  Profit:  48693
-Average:  286  Profit:  48693
-Average:  287  Profit:  48693
-Average:  288  Profit:  48693
-Average:  289  Profit:  48693
-Average:  290  Profit:  48693
-Average:  291  Profit:  48693
-Average:  292  Profit:  48693
-Average:  293  Profit:  48693
-Average:  294  Profit:  48693
-Average:  295  Profit:  48693
-Average:  296  Profit:  48693
-Average:  297  Profit:  48693
-Average:  298  Profit:  48693
-Average:  299  Profit:  48693
-Average:  300  Profit:  48693
-Average:  301  Profit:  48693
-Average:  302  Profit:  48693
-Average:  303  Profit:  48693
-Average:  304  Profit:  48693
-Average:  305  Profit:  48693
-Average:  306  Profit:  48693
-Average:  307  Profit:  48693
-Average:  308  Profit:  48693
-Average:  309  Profit:  48693
-Average:  310  Profit:  48693
-Average:  311  Profit:  48693
-Average:  312  Profit:  48693
-Average:  313  Profit:  48693
-Average:  314  Profit:  48693
-Average:  315  Profit:  48693
-Average:  316  Profit:  48693
-Average:  317  Profit:  48693
 Average:  318  Profit:  48693
+Average:  319  Profit:  47483.75
 """
