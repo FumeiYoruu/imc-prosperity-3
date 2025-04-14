@@ -77,6 +77,11 @@ for price2 in range(284, 319, 2):
 
 """
 Output: (just so you don't have to run it again)
+
+
+
+
+
 Average:  250  Best:  (np.int64(199), np.int64(284))  Profit:  59947
 Average:  251  Best:  (np.int64(199), np.int64(284))  Profit:  59947
 Average:  252  Best:  (np.int64(199), np.int64(284))  Profit:  59947
@@ -147,6 +152,11 @@ Average:  316  Best:  (np.int64(199), np.int64(316))  Profit:  49995
 Average:  317  Best:  (np.int64(199), np.int64(317))  Profit:  49354
 Average:  318  Best:  (np.int64(199), np.int64(318))  Profit:  48693
 Average:  319  Best:  (np.int64(199), np.int64(319))  Profit:  48012
+
+
+
+
+
 
 ------------------- 284 -------------------
 Average:  284  Profit:  59947
