@@ -1,7 +1,7 @@
 import json
-from typing import List, Any
 import jsonpickle
 import numpy as np
+from typing import List, Any
 from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
 
 class Logger:
@@ -14,108 +14,40 @@ class Logger:
 
     def flush(self, state: TradingState, orders: dict[Symbol, list[Order]], conversions: int, trader_data: str) -> None:
         base_length = len(
-            self.to_json(
-                [
-                    self.compress_state(state, ""),
-                    self.compress_orders(orders),
-                    conversions,
-                    "",
-                    "",
-                ]
-            )
+            self.to_json([self.compress_state(state, ""), self.compress_orders(orders), conversions, "", ""])
         )
-
-        # We truncate state.traderData, trader_data, and self.logs to the same max. length to fit the log limit
         max_item_length = (self.max_log_length - base_length) // 3
-
-        print(
-            self.to_json(
-                [
-                    self.compress_state(state, self.truncate(state.traderData, max_item_length)),
-                    self.compress_orders(orders),
-                    conversions,
-                    self.truncate(trader_data, max_item_length),
-                    self.truncate(self.logs, max_item_length),
-                ]
-            )
-        )
-
+        print(self.to_json([
+            self.compress_state(state, self.truncate(state.traderData, max_item_length)),
+            self.compress_orders(orders),
+            conversions,
+            self.truncate(trader_data, max_item_length),
+            self.truncate(self.logs, max_item_length),
+        ]))
         self.logs = ""
 
     def compress_state(self, state: TradingState, trader_data: str) -> list[Any]:
         return [
-            state.timestamp,
-            trader_data,
-            self.compress_listings(state.listings),
-            self.compress_order_depths(state.order_depths),
-            self.compress_trades(state.own_trades),
-            self.compress_trades(state.market_trades),
+            state.timestamp, trader_data,
+            [[l.symbol, l.product, l.denomination] for l in state.listings.values()],
+            {s: [d.buy_orders, d.sell_orders] for s, d in state.order_depths.items()},
+            [[t.symbol, t.price, t.quantity, t.buyer, t.seller, t.timestamp] for trades in state.own_trades.values() for t in trades],
+            [[t.symbol, t.price, t.quantity, t.buyer, t.seller, t.timestamp] for trades in state.market_trades.values() for t in trades],
             state.position,
-            self.compress_observations(state.observations),
+            [state.observations.plainValueObservations, {
+                p: [o.bidPrice, o.askPrice, o.transportFees, o.exportTariff, o.importTariff, o.sugarPrice, o.sunlightIndex]
+                for p, o in state.observations.conversionObservations.items()
+            }]
         ]
 
-    def compress_listings(self, listings: dict[Symbol, Listing]) -> list[list[Any]]:
-        compressed = []
-        for listing in listings.values():
-            compressed.append([listing.symbol, listing.product, listing.denomination])
-
-        return compressed
-
-    def compress_order_depths(self, order_depths: dict[Symbol, OrderDepth]) -> dict[Symbol, list[Any]]:
-        compressed = {}
-        for symbol, order_depth in order_depths.items():
-            compressed[symbol] = [order_depth.buy_orders, order_depth.sell_orders]
-
-        return compressed
-
-    def compress_trades(self, trades: dict[Symbol, list[Trade]]) -> list[list[Any]]:
-        compressed = []
-        for arr in trades.values():
-            for trade in arr:
-                compressed.append(
-                    [
-                        trade.symbol,
-                        trade.price,
-                        trade.quantity,
-                        trade.buyer,
-                        trade.seller,
-                        trade.timestamp,
-                    ]
-                )
-
-        return compressed
-
-    def compress_observations(self, observations: Observation) -> list[Any]:
-        conversion_observations = {}
-        for product, observation in observations.conversionObservations.items():
-            conversion_observations[product] = [
-                observation.bidPrice,
-                observation.askPrice,
-                observation.transportFees,
-                observation.exportTariff,
-                observation.importTariff,
-                observation.sugarPrice,
-                observation.sunlightIndex,
-            ]
-
-        return [observations.plainValueObservations, conversion_observations]
-
     def compress_orders(self, orders: dict[Symbol, list[Order]]) -> list[list[Any]]:
-        compressed = []
-        for arr in orders.values():
-            for order in arr:
-                compressed.append([order.symbol, order.price, order.quantity])
-
-        return compressed
+        return [[o.symbol, o.price, o.quantity] for ol in orders.values() for o in ol]
 
     def to_json(self, value: Any) -> str:
         return json.dumps(value, cls=ProsperityEncoder, separators=(",", ":"))
 
     def truncate(self, value: str, max_length: int) -> str:
-        if len(value) <= max_length:
-            return value
-
-        return value[: max_length - 3] + "..."
+        return value if len(value) <= max_length else value[:max_length - 3] + "..."
 
 logger = Logger()
 
@@ -131,7 +63,14 @@ class Trader:
         }
         self.threshold = 3
         self.volume_per_trade = 3
-        self.position_limit = 100
+        self.position_limits = {
+            "VOLCANIC_ROCK": 400,
+            "VOLCANIC_ROCK_VOUCHER_9500": 200,
+            "VOLCANIC_ROCK_VOUCHER_9750": 200,
+            "VOLCANIC_ROCK_VOUCHER_10000": 200,
+            "VOLCANIC_ROCK_VOUCHER_10250": 200,
+            "VOLCANIC_ROCK_VOUCHER_10500": 200,
+        }
 
     def calculate_fair_value(self, rock_prices: list[float], strike: float, days_left: int, lambda_decay=0.9) -> float:
         if not rock_prices:
@@ -152,17 +91,20 @@ class Trader:
                 rock_price_history = saved.get("rock_price_history", [])
             except:
                 rock_price_history = []
-
         if self.rock not in state.order_depths:
-            logger.flush(state, orders, conversions, jsonpickle.encode({"rock_price_history": rock_price_history}))
-            return {}, conversions, jsonpickle.encode({"rock_price_history": rock_price_history})
+            traderData = jsonpickle.encode({"rock_price_history": rock_price_history})
+            logger.flush(state, orders, conversions, traderData)
+            return {}, conversions, traderData
+
         rock_depth = state.order_depths[self.rock]
         if not rock_depth.buy_orders or not rock_depth.sell_orders:
-            logger.flush(state, orders, conversions, jsonpickle.encode({"rock_price_history": rock_price_history}))
-            return {}, conversions, jsonpickle.encode({"rock_price_history": rock_price_history})
+            traderData = jsonpickle.encode({"rock_price_history": rock_price_history})
+            logger.flush(state, orders, conversions, traderData)
+            return {}, conversions, traderData
 
         rock_mid = (max(rock_depth.buy_orders) + min(rock_depth.sell_orders)) / 2
         rock_pos = state.position.get(self.rock, 0)
+        rock_limit = self.position_limits[self.rock]
         rock_price_history.append(rock_mid)
         if len(rock_price_history) > 50:
             rock_price_history = rock_price_history[-50:]
@@ -178,20 +120,19 @@ class Trader:
             ask = min(depth.sell_orders)
             vmid = (bid + ask) / 2
             pos = state.position.get(voucher, 0)
+            limit = self.position_limits[voucher]
             voucher_orders = []
 
             days_left = max(0, 6 - day)
             fair_value = self.calculate_fair_value(rock_price_history, strike, days_left)
             diff = vmid - fair_value
-
             if diff > self.threshold:
-                volume = min(self.volume_per_trade, pos + self.position_limit, self.position_limit - rock_pos)
+                volume = min(self.volume_per_trade, pos + limit, rock_limit - rock_pos)
                 if volume > 0:
                     voucher_orders.append(Order(voucher, bid, -volume))
                     orders.setdefault(self.rock, []).append(Order(self.rock, max(rock_depth.buy_orders), volume))
-
             elif diff < -self.threshold:
-                volume = min(self.volume_per_trade, self.position_limit - pos, rock_pos + self.position_limit)
+                volume = min(self.volume_per_trade, limit - pos, rock_pos + rock_limit)
                 if volume > 0:
                     voucher_orders.append(Order(voucher, ask, volume))
                     orders.setdefault(self.rock, []).append(Order(self.rock, min(rock_depth.sell_orders), -volume))
