@@ -1,7 +1,8 @@
 import json
-from typing import List, Any
 import jsonpickle
+from typing import List, Any
 import numpy as np
+import math
 from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
 
 class Logger:
@@ -129,85 +130,106 @@ class Trader:
             "VOLCANIC_ROCK_VOUCHER_10250": 10250,
             "VOLCANIC_ROCK_VOUCHER_10500": 10500,
         }
+        self.position_limits = {
+            "VOLCANIC_ROCK": 400,
+            "VOLCANIC_ROCK_VOUCHER_9500": 200,
+            "VOLCANIC_ROCK_VOUCHER_9750": 200,
+            "VOLCANIC_ROCK_VOUCHER_10000": 200,
+            "VOLCANIC_ROCK_VOUCHER_10250": 200,
+            "VOLCANIC_ROCK_VOUCHER_10500": 200,
+        }
+        # TODO: parameters not tuned
         self.threshold = 3
         self.volume_per_trade = 3
-        self.position_limit = 100
 
-    def calculate_fair_value(self, rock_prices: list[float], strike: float, days_left: int) -> float:
-        import math
+    # estimate cdf of normal distribution
+    def norm_cdf(self, x):
+        t = 1 / (1 + 0.2316419 * abs(x))
+        d = 0.3989423 * math.exp(-x * x / 2)
+        prob = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))))
+        return 1 - prob if x >= 0 else prob
+    
+    # calculate fair value using Black-Scholes
+    def calculate_fair_value(self, rock_prices, strike, days_left):
         if len(rock_prices) < 10:
             return max(0.0, rock_prices[-1] - strike)
 
-        ema_rock = np.mean(rock_prices[-10:])
+        ma_rock = np.mean(rock_prices[-10:])
         log_returns = np.diff(np.log(rock_prices))
         sigma = np.std(log_returns)
         T = days_left
-        if T == 0 or sigma == 0:
-            return max(0.0, ema_rock - strike)
-        d1 = (math.log(ema_rock / strike) + 0.5 * sigma ** 2 * T) / (sigma * math.sqrt(T))
-        d2 = d1 - sigma * math.sqrt(T)
-      
-        def norm_cdf(x: float) -> float:
-            t = 1 / (1 + 0.2316419 * abs(x))
-            d = 0.3989423 * math.exp(-x * x / 2)
-            prob = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))))
-            return 1 - prob if x >= 0 else prob
-          
-        fair_value = ema_rock * norm_cdf(d1) - strike * norm_cdf(d2)
-        return fair_value
 
+        if T == 0 or sigma == 0:
+            return max(0.0, ma_rock - strike)
+
+        d1 = (math.log(ma_rock / strike) + 0.5 * sigma ** 2 * T) / (sigma * math.sqrt(T))
+        d2 = d1 - sigma * math.sqrt(T)
+
+        return ma_rock * self.norm_cdf(d1) - strike * self.norm_cdf(d2)
 
     def run(self, state: TradingState):
         orders = {}
-        conversions = 0
+        conversions = 1
         day = state.timestamp // 100000
         rock_price_history = []
+
         if state.traderData:
             try:
                 saved = jsonpickle.decode(state.traderData)
                 rock_price_history = saved.get("rock_price_history", [])
             except:
                 rock_price_history = []
-
+        
         if self.rock not in state.order_depths:
-            logger.flush(state, orders, conversions, jsonpickle.encode({"rock_price_history": rock_price_history}))
-            return {}, conversions, jsonpickle.encode({"rock_price_history": rock_price_history})
+            traderData = jsonpickle.encode({"rock_price_history": rock_price_history})
+            logger.flush(state, orders, conversions, traderData)
+            return {}, conversions, traderData
+
         rock_depth = state.order_depths[self.rock]
         if not rock_depth.buy_orders or not rock_depth.sell_orders:
-            logger.flush(state, orders, conversions, jsonpickle.encode({"rock_price_history": rock_price_history}))
-            return {}, conversions, jsonpickle.encode({"rock_price_history": rock_price_history})
+            traderData = jsonpickle.encode({"rock_price_history": rock_price_history})
+            logger.flush(state, orders, conversions, traderData)
+            return {}, conversions, traderData
 
         rock_mid = (max(rock_depth.buy_orders) + min(rock_depth.sell_orders)) / 2
         rock_pos = state.position.get(self.rock, 0)
+        rock_limit = self.position_limits[self.rock]
         rock_price_history.append(rock_mid)
         if len(rock_price_history) > 50:
             rock_price_history = rock_price_history[-50:]
 
+        # check every voucher
         for voucher, strike in self.vouchers.items():
             if voucher not in state.order_depths:
                 continue
             depth = state.order_depths[voucher]
             if not depth.buy_orders or not depth.sell_orders:
                 continue
+            
+            voucher_orders = []
+            pos = state.position.get(voucher, 0)
+            limit = self.position_limits[voucher]
+            days_left = max(0, 6 - day)
 
+            # mid price for voucher
             bid = max(depth.buy_orders)
             ask = min(depth.sell_orders)
             vmid = (bid + ask) / 2
-            pos = state.position.get(voucher, 0)
-            voucher_orders = []
-
-            days_left = max(0, 6 - day)
+            
+            # fair value for voucher
             fair_value = self.calculate_fair_value(rock_price_history, strike, days_left)
             diff = vmid - fair_value
 
+            # short vouchers, buy rocks
             if diff > self.threshold:
-                volume = min(self.volume_per_trade, pos + self.position_limit, self.position_limit - rock_pos)
+                volume = min(self.volume_per_trade, pos + limit, rock_limit - rock_pos)
                 if volume > 0:
                     voucher_orders.append(Order(voucher, bid, -volume))
                     orders.setdefault(self.rock, []).append(Order(self.rock, max(rock_depth.buy_orders), volume))
 
+            # long vouchers, sell rocks
             elif diff < -self.threshold:
-                volume = min(self.volume_per_trade, self.position_limit - pos, rock_pos + self.position_limit)
+                volume = min(self.volume_per_trade, limit - pos, rock_pos + rock_limit)
                 if volume > 0:
                     voucher_orders.append(Order(voucher, ask, volume))
                     orders.setdefault(self.rock, []).append(Order(self.rock, min(rock_depth.sell_orders), -volume))
