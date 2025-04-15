@@ -1,6 +1,10 @@
-**update**: `rocks.py` 11,230 on website simulation\
-            `kuasong.py` 1,666 on website simulation\
-            `jams.py` 2,009 on website simulation
+`kuasong.py` 1,666 on website\
+`jams.py` 2,009 on website\
+`djembes.py` 2,881 on website\
+`rocks.py` 11,230 on website\
+`options.py` 36,169 on website
+
+
 
 **Rocks & Vouchers: `optionsBLKSCH.py`**\
 Website Simulation: 30,049\
