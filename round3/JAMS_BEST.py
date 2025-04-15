@@ -118,7 +118,7 @@ logger = Logger()
 class Trader:
     def __init__(self):
         self.product = "JAMS"
-        self.position_limit = 250
+        self.position_limit = 300
         self.history = []
         
         # TODO: tune params
