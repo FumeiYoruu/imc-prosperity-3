@@ -1,5 +1,5 @@
 `kuasong.py` 1,728 on website\
-`jams.py` 2,009 on website\
+`jams.py` 4,123 on website\
 `djembes.py` 2,881 on website\
 `rocks.py` 11,230 on website\
 `options.py` 36,169 on website
@@ -20,7 +20,7 @@ website: 36,169\
 
 ### TODO: robustness test (positive pnl on backtester for r1(or r2)~r3 using `--match-trades worse` and on web simulation):
 
-PICNIC_BASKET1: ❌ **no trades dealed on website simulation**\
+PICNIC_BASKET1: ☑️ Unchanged from round2
 PICNIC_BASKET2: ❌ **negative pnl on website simulation**\
 SQUID_INK: ✅ tests all passed, unchanged from round2, `squidMarketMaking.py` \
 DJEMBES: ❌ **negative pnl on website simulation** \
