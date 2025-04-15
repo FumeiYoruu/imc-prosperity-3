@@ -7,7 +7,7 @@ BT normal: 167,330\
 
 file: options.py\
 BT: 447k\
-website: 32,235\
+website: 36,169\
 **Note**: overall pnl is similar but pnl curve is more stable/less dips
 
 ### TODO: robustness test (positive pnl on backtester for r1(or r2)~r3 using `--match-trades worse` and on web simulation):
