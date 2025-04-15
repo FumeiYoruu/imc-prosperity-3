@@ -5,6 +5,10 @@ BT normal: 167,330\
 **Note1**: calculation of fair price is important, if it is underestimated, then the PNL will increase much more but that is due to bias of the current data (i.e., short only again)\
 **Note2**: rocks seem difficult to take orders in web simulation, so we might can use current file to do vouchers but another strategy for rocks (i have not found yet, all losing money)
 
+file: options.py\
+BT: 447k\
+website: 32,235\
+**Note**: overall pnl is similar but pnl curve is more stable/less dips
 
 ### TODO: robustness test (positive pnl on backtester for r1(or r2)~r3 using `--match-trades worse` and on web simulation):
 
