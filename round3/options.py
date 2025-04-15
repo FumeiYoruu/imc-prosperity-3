@@ -145,10 +145,7 @@ class Trader:
 
     # estimate cdf of normal distribution
     def norm_cdf(self, x):
-        t = 1 / (1 + 0.2316419 * abs(x))
-        d = 0.3989423 * math.exp(-x * x / 2)
-        prob = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))))
-        return 1 - prob if x >= 0 else prob
+        return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
     
     # calculate fair value using Black-Scholes
     def calculate_fair_value(self, rock_prices, strike, days_left):
