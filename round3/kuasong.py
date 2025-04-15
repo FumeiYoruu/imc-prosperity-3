@@ -123,7 +123,7 @@ class Trader:
         
         # TODO: tune params
         self.volume = 10
-        self.window = 70 # 30->70
+        self.window = 60 # 30->60
         self.spread = 3 # 2->3
 
     def run(self, state):
