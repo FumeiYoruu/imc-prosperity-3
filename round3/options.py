@@ -141,7 +141,7 @@ class Trader:
         # TODO: parameters not tuned
         self.window_size = 75
         self.threshold = 10
-        self.volume = 10
+        self.volume = 40 # change to 40
 
     # estimate cdf of normal distribution
     def norm_cdf(self, x):
