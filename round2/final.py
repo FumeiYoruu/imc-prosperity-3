@@ -144,6 +144,7 @@ class Trader:
         self.time_frame = 100
         self.spread_mean_lookback = 100
         self.z_score_threshold = 3
+        self.z_score_threshold_etf2 = 3
         self.z_upper_threshold = 2
         self.z_lower_threshold = -2
         self.spread_history2 = []
@@ -157,6 +158,7 @@ class Trader:
         self.croissant_volume = 35
         self.croissant_window = 70
         self.pred_threshold = 2.2 #kuasong
+
     
     def squid(self, state, orders, buy_order_volume, sell_order_volume, product = 'SQUID_INK'):
     
@@ -606,8 +608,8 @@ class Trader:
         v = self.volume
 
         # TODO: tune self.volume & self.threshold
-        if abs(spread_z_score) > self.z_score_threshold:
-            if  spread > 0 and spread_z_score > self.z_score_threshold:
+        if abs(spread_z_score) > self.z_score_threshold_etf2:
+            if  spread > 0 and spread_z_score > self.z_score_threshold_etf2:
                 vol = min(v, bid_vols["PICNIC_BASKET2"], self.position_limit["PICNIC_BASKET2"] + pos.get("PICNIC_BASKET2", 0))
                 if vol > 0:
                     orders.append(Order("PICNIC_BASKET2", bids["PICNIC_BASKET2"], -vol))
@@ -618,7 +620,7 @@ class Trader:
                 #         orders.append(Order(prod, asks[prod], vol))
                 #         buy_order_volume[prod] += vol
 
-            elif  spread  < 0 and spread_z_score < -self.z_score_threshold:
+            elif  spread  < 0 and spread_z_score < -self.z_score_threshold_etf2:
                 vol = min(v, -ask_vols["PICNIC_BASKET2"], self.position_limit["PICNIC_BASKET2"] - pos.get("PICNIC_BASKET2", 0))
                 if vol > 0:
                     orders.append(Order("PICNIC_BASKET2", asks["PICNIC_BASKET2"], vol))

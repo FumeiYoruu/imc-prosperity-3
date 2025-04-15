@@ -144,6 +144,7 @@ class Trader:
         self.time_frame = 100
         self.spread_mean_lookback = 100
         self.z_score_threshold = 3
+        self.z_score_threshold_etf2 = 2
         self.z_upper_threshold = 2
         self.z_lower_threshold = -2
         self.spread_history2 = []
@@ -157,6 +158,8 @@ class Trader:
         self.croissant_volume = 35
         self.croissant_window = 70
         self.pred_threshold = 2.2 #kuasong
+        self.time_remaining = 0
+        self.time_remaining_etf1 = 0
     
     def squid(self, state, orders, buy_order_volume, sell_order_volume, product = 'SQUID_INK'):
 
@@ -458,7 +461,7 @@ class Trader:
         best_ask = min(order_depth.sell_orders.keys())
         best_bid_vol = abs(order_depth.buy_orders[best_bid])
         best_ask_vol = abs(order_depth.sell_orders[best_ask])
-        if(product in ["PICNIC_BASKET1", "PICNIC_BASKET2", "JAMS"]):
+        if(product in []):
             return (best_bid * best_ask_vol + best_ask * best_bid_vol) / (best_bid_vol + best_ask_vol)
         else:
             return (best_bid + best_ask) /2
@@ -493,6 +496,7 @@ class Trader:
             else:
                 self.price_history[p].append(mids[p])
     def etf_b1(self, order_depths, pos, orders, buy_order_volume, sell_order_volume, prods):
+        self.time_remaining_etf1 = max(self.time_remaining_etf1 - 1, 0)
         if not all(p in order_depths for p in prods):
             return orders, buy_order_volume, sell_order_volume
     
@@ -529,6 +533,7 @@ class Trader:
             if  spread > 0 and spread_z_score > self.z_score_threshold:
                 vol = min(v, bid_vols["PICNIC_BASKET1"], self.position_limit["PICNIC_BASKET1"] + pos.get("PICNIC_BASKET1", 0))
                 if vol > 0:
+                    self.time_remaining_etf1 = 100
                     orders.append(Order("PICNIC_BASKET1", bids["PICNIC_BASKET1"], -vol))
                     sell_order_volume['PICNIC_BASKET1'] += vol
                 # for prod, nums in [("CROISSANTS", 6), ("JAMS", 3), ("DJEMBES", 1)]:
@@ -540,6 +545,7 @@ class Trader:
             elif  spread  < 0 and spread_z_score < -self.z_score_threshold:
                 vol = min(v, -ask_vols["PICNIC_BASKET1"], self.position_limit["PICNIC_BASKET1"] - pos.get("PICNIC_BASKET1", 0))
                 if vol > 0:
+                    self.time_remaining_etf1 = 100
                     orders.append(Order("PICNIC_BASKET1", asks["PICNIC_BASKET1"], vol))
                     buy_order_volume['PICNIC_BASKET1'] += vol
                 # for prod, nums in [("CROISSANTS", 6), ("JAMS", 3), ("DJEMBES", 1)]:
@@ -547,16 +553,15 @@ class Trader:
                 #     if vol > 0:
                 #         orders.append(Order(prod, bids[prod], -vol))
                 #         sell_order_volume[prod] += vol
-        # elif spread_z_score < 0.25 * self.z_score_threshold:
-        #     for p in [prods[0]]:
-        #         if len(self.price_history[p]) >= 100:
-        #             fair_value = statistics.mean(self.price_history[p][-100:])
-        #             orders, buy_order_volume, sell_order_volume = self.clear_position(fair_value, 2, order_depths, orders, pos, p, buy_order_volume, sell_order_volume)
+            elif abs(spread_z_score) < 0.5 * self.z_score_threshold or self.time_remaining_etf1 == 0:
+                for p in [prods[0]]:
+                    fair_value = nav
+                    orders, buy_order_volume, sell_order_volume = self.clear_orders(orders, p, order_depths[p], fair_value, 1, pos.get(p, 0), buy_order_volume, sell_order_volume)
 
         return orders, buy_order_volume, sell_order_volume
     
     def etf_b2(self, order_depths, pos, orders, buy_order_volume, sell_order_volume, prods):
-        
+        self.time_remaining = max(self.time_remaining - 1, 0)
     
         depths = {p: order_depths[p] for p in prods}
         if not all(d.buy_orders and d.sell_orders for d in depths.values()):
@@ -591,11 +596,13 @@ class Trader:
         v = self.volume
 
         # TODO: tune self.volume & self.threshold
-        if abs(spread_z_score) > self.z_score_threshold:
-            if  spread > 0 and spread_z_score > self.z_score_threshold:
+        if abs(spread_z_score) > self.z_score_threshold_etf2:
+            if  spread > 0 and spread_z_score > self.z_score_threshold_etf2:
                 vol = min(v, bid_vols["PICNIC_BASKET2"], self.position_limit["PICNIC_BASKET2"] + pos.get("PICNIC_BASKET2", 0))
+                
                 if vol > 0:
                     orders.append(Order("PICNIC_BASKET2", bids["PICNIC_BASKET2"], -vol))
+                    self.time_remaining = 100
                     sell_order_volume['PICNIC_BASKET2'] += vol
                 # for prod, nums in [("CROISSANTS", 6), ("JAMS", 3), ("DJEMBES", 1)]:
                 #     vol = min(nums * vol, -ask_vols[prod], self.position_limit[prod] - pos.get(prod, 0))
@@ -603,21 +610,21 @@ class Trader:
                 #         orders.append(Order(prod, asks[prod], vol))
                 #         buy_order_volume[prod] += vol
 
-            elif  spread  < 0 and spread_z_score < -self.z_score_threshold:
+            elif  spread  < 0 and spread_z_score < -self.z_score_threshold_etf2:
                 vol = min(v, -ask_vols["PICNIC_BASKET2"], self.position_limit["PICNIC_BASKET2"] - pos.get("PICNIC_BASKET2", 0))
                 if vol > 0:
                     orders.append(Order("PICNIC_BASKET2", asks["PICNIC_BASKET2"], vol))
+                    self.time_remaining = 100
                     buy_order_volume['PICNIC_BASKET2'] += vol
                 # for prod, nums in [("CROISSANTS", 6), ("JAMS", 3), ("DJEMBES", 1)]:
                 #     vol = min(nums * vol, bid_vols[prod], self.position_limit[prod] + pos.get(prod, 0))
                 #     if vol > 0:
                 #         orders.append(Order(prod, bids[prod], -vol))
                 #         sell_order_volume[prod] += vol
-        # elif spread_z_score < 0.5 * self.z_score_threshold:
-        #     for p in [prods[0]]:
-        #         if len(self.price_history[p]) >= 100:
-        #             fair_value = statistics.mean(self.price_history2[p][-100:])
-        #             orders, buy_order_volume, sell_order_volume = self.clear_position(fair_value, 2, order_depths, orders, pos, p, buy_order_volume, sell_order_volume)
+        elif abs(spread_z_score) < 0.5 * self.z_score_threshold or self.time_remaining == 0:
+            for p in [prods[0]]:
+                fair_value = nav
+                orders, buy_order_volume, sell_order_volume = self.clear_orders(orders, p, order_depths[p], fair_value, 1, pos.get(p, 0), buy_order_volume, sell_order_volume)
 
         return orders, buy_order_volume, sell_order_volume
     
@@ -939,12 +946,12 @@ class Trader:
         self.update_price_history(state.order_depths, ["PICNIC_BASKET1", "PICNIC_BASKET2", "CROISSANTS", "JAMS", "DJEMBES", "KELP", 'RAINFOREST_RESIN', 'SQUID_INK'])
         orders, buy_order_volume, sell_order_volume = self.etf_b1(state.order_depths, state.position, orders, buy_order_volume, sell_order_volume, prods)
         orders, buy_order_volume, sell_order_volume = self.etf_b2(state.order_depths, state.position, orders, buy_order_volume, sell_order_volume, prods2)
-        orders, buy_order_volume, sell_order_volume = self.jams(orders, state.order_depths, state.position, buy_order_volume, sell_order_volume, 'JAMS')
-        orders, buy_order_volume, sell_order_volume = self.djembes(state, 'DJEMBES', orders, buy_order_volume, sell_order_volume, traderObject)
-        orders, buy_order_volume, sell_order_volume = self.kelp(state, 'KELP', orders, buy_order_volume, sell_order_volume, traderObject)
-        orders, buy_order_volume, sell_order_volume = self.rainforest_resin(state, 'RAINFOREST_RESIN', orders, buy_order_volume, sell_order_volume)
-        orders, buy_order_volume, sell_order_volume = self.squid(state, orders, buy_order_volume, sell_order_volume, 'SQUID_INK')
-        orders, buy_order_volume, sell_order_volume = self.croissant(state, orders, buy_order_volume, sell_order_volume, 'CROISSANTS')
+        # orders, buy_order_volume, sell_order_volume = self.jams(orders, state.order_depths, state.position, buy_order_volume, sell_order_volume, 'JAMS')
+        # orders, buy_order_volume, sell_order_volume = self.djembes(state, 'DJEMBES', orders, buy_order_volume, sell_order_volume, traderObject)
+        # orders, buy_order_volume, sell_order_volume = self.kelp(state, 'KELP', orders, buy_order_volume, sell_order_volume, traderObject)
+        # orders, buy_order_volume, sell_order_volume = self.rainforest_resin(state, 'RAINFOREST_RESIN', orders, buy_order_volume, sell_order_volume)
+        # orders, buy_order_volume, sell_order_volume = self.squid(state, orders, buy_order_volume, sell_order_volume, 'SQUID_INK')
+        # orders, buy_order_volume, sell_order_volume = self.croissant(state, orders, buy_order_volume, sell_order_volume, 'CROISSANTS')
         result = {}
         for o in orders:
             result.setdefault(o.symbol, []).append(o)
