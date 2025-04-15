@@ -24,6 +24,6 @@ PICNIC_BASKET1: ☑️ Unchanged from round2 \
 PICNIC_BASKET2: ☑️ Fixed \
 SQUID_INK: ✅ tests all passed, unchanged from round2, `squidMarketMaking.py` \
 DJEMBES: ☑️ Fixed using momentum \
-CROISSANTS: ❌ even **not passing backtester** \
+CROISSANTS: ☑️ Fixed using market making \
 JAMS: ☑️ Fixed using market making \
 KELP & RESIN: ✅
