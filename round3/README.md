@@ -20,10 +20,10 @@ website: 36,169\
 
 ### TODO: robustness test (positive pnl on backtester for r1(or r2)~r3 using `--match-trades worse` and on web simulation):
 
-PICNIC_BASKET1: ☑️ Unchanged from round2
-PICNIC_BASKET2: ☑️ Fixed
+PICNIC_BASKET1: ☑️ Unchanged from round2 \
+PICNIC_BASKET2: ☑️ Fixed \
 SQUID_INK: ✅ tests all passed, unchanged from round2, `squidMarketMaking.py` \
-DJEMBES: ☑️ Fixed using momentum
+DJEMBES: ☑️ Fixed using momentum \
 CROISSANTS: ❌ even **not passing backtester** \
-JAMS: ☑️ Fixed using market making
+JAMS: ☑️ Fixed using market making \
 KELP & RESIN: ✅
