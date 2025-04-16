@@ -243,12 +243,12 @@ class Trader:
             
             # difference between implied volatility and fitted volatility
             diff = iv - v_fit
-            # voucher overestimate
+            # voucher overvalued
             if diff > self.threshold and pos > -limit:
                 volume = min(self.volume, depth.buy_orders[best_bid], pos + limit)
                 if volume > 0:
                     orders.append(Order(voucher, best_bid, -volume))
-            # voucher underestimate
+            # voucher undervalued
             elif diff < -self.threshold and pos < limit:
                 volume = min(self.volume, -depth.sell_orders[best_ask], limit - pos)
                 if volume > 0:
