@@ -1,6 +1,5 @@
 import json
 from typing import List, Any
-import string
 import statistics
 import numpy as np
 
@@ -119,15 +118,16 @@ class Trader:
     def __init__(self):
         self.product = "VOLCANIC_ROCK"
         self.position_limit = 400
-        self.history = []
         
-        # TODO: tune params
         self.volume = 10
-        self.window = 30
+        self.window = 50
         self.spread = 2
 
+        self.history = []
+        self.ema = None
+        self.alpha = 2 / (self.window + 1)
+
     def run(self, state):
-        orders = []
         product = self.product
 
         if product not in state.order_depths:
@@ -145,11 +145,15 @@ class Trader:
         if len(self.history) > 120:
             self.history = self.history[-120:]
 
+        if self.ema is None:
+            self.ema = mid_price
+        else:
+            self.ema = self.alpha * mid_price + (1 - self.alpha) * self.ema
+
         if len(self.history) < self.window:
             return {}, 0, ""
 
-        # using SMA
-        fair_value = int(sum(self.history[-self.window:]) / self.window)
+        fair_value = int(self.ema)
         pos = state.position.get(product, 0)
         result = {product: []}
 
