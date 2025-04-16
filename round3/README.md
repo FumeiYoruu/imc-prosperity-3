@@ -1,7 +1,7 @@
 `kuasong.py` 1,728 on website\
 `jams.py` 4,123 on website\
 `djembes.py` 2,881 on website\
-`rocks.py` 11,230 on website\
+`rocks.py` ~20k on website\
 `options.py` 36,169 on website\
 `options_best.py`: 48,131 on website
 
