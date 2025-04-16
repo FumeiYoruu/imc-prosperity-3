@@ -145,9 +145,9 @@ class Trader:
         self.v_bias = {
             "VOLCANIC_ROCK_VOUCHER_9500":  0.0000,
             "VOLCANIC_ROCK_VOUCHER_9750":  0.0000,
-            "VOLCANIC_ROCK_VOUCHER_10000": -0.005,
-            "VOLCANIC_ROCK_VOUCHER_10250": -0.004,
-            "VOLCANIC_ROCK_VOUCHER_10500": -0.004,
+            "VOLCANIC_ROCK_VOUCHER_10000": 0.0000,
+            "VOLCANIC_ROCK_VOUCHER_10250": 0.0000,
+            "VOLCANIC_ROCK_VOUCHER_10500": 0.0000,
         }
 
     def norm_cdf(self, x):
