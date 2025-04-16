@@ -145,9 +145,9 @@ class Trader:
         self.v_bias = {
             "VOLCANIC_ROCK_VOUCHER_9500":  0.0000,
             "VOLCANIC_ROCK_VOUCHER_9750":  0.0000,
-            "VOLCANIC_ROCK_VOUCHER_10000": 0.0000,
-            "VOLCANIC_ROCK_VOUCHER_10250": 0.0000,
-            "VOLCANIC_ROCK_VOUCHER_10500": 0.0000,
+            "VOLCANIC_ROCK_VOUCHER_10000": -0.005,
+            "VOLCANIC_ROCK_VOUCHER_10250": -0.004,
+            "VOLCANIC_ROCK_VOUCHER_10500": -0.004,
         }
 
     def norm_cdf(self, x):
@@ -163,7 +163,7 @@ class Trader:
         return S * self.norm_cdf(d1) - K * self.norm_cdf(d2)
 
     def implied_volatility(self, C, S, K, T, eps=1e-6, max_iter=100):
-        # binary search for implied volatility
+        # binary answer for implied volatility
         low = 1e-4
         high = 5.0
         for _ in range(max_iter):
@@ -210,8 +210,6 @@ class Trader:
         else:
             rock_history = rock_history[-self.window_size:]
 
-        # day = state.timestamp // 100000
-
         ### main loop here ###
         for voucher, strike in self.vouchers.items():
             if voucher not in state.order_depths:
@@ -228,11 +226,9 @@ class Trader:
             best_bid = max(depth.buy_orders)
             best_ask = min(depth.sell_orders)
             voucher_mid = (best_bid + best_ask) / 2
-            # days_left = max(0.5, 6 - day)
 
             S = sum(rock_history) / len(rock_history)
             K = strike
-            # T = days_left
             T = 5
 
             m_t = math.log(K / S) / math.sqrt(T)
@@ -244,12 +240,12 @@ class Trader:
             
             # difference between implied volatility and fitted volatility
             diff = iv - v_fit
-            # voucher overvalued
+            # voucher overestimate
             if diff > self.threshold and pos > -limit:
                 volume = min(self.volume, depth.buy_orders[best_bid], pos + limit)
                 if volume > 0:
                     orders.append(Order(voucher, best_bid, -volume))
-            # voucher undervalued
+            # voucher underestimate
             elif diff < -self.threshold and pos < limit:
                 volume = min(self.volume, -depth.sell_orders[best_ask], limit - pos)
                 if volume > 0:
