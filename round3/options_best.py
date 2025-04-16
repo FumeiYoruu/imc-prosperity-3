@@ -210,7 +210,7 @@ class Trader:
         else:
             rock_history = rock_history[-self.window_size:]
 
-        day = state.timestamp // 100000
+        # day = state.timestamp // 100000
 
         ### main loop here ###
         for voucher, strike in self.vouchers.items():
@@ -232,7 +232,8 @@ class Trader:
 
             S = sum(rock_history) / len(rock_history)
             K = strike
-            T = days_left
+            # T = days_left
+            T = 5
 
             m_t = math.log(K / S) / math.sqrt(T)
             v_fit = self.vm_a * m_t**2 + self.vm_b * m_t + self.vm_c
