@@ -163,7 +163,7 @@ class Trader:
         return S * self.norm_cdf(d1) - K * self.norm_cdf(d2)
 
     def implied_volatility(self, C, S, K, T, eps=1e-6, max_iter=100):
-        # binary answer for implied volatility
+        # binary search for implied volatility
         low = 1e-4
         high = 5.0
         for _ in range(max_iter):
