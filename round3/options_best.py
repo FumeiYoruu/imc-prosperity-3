@@ -228,7 +228,7 @@ class Trader:
             best_bid = max(depth.buy_orders)
             best_ask = min(depth.sell_orders)
             voucher_mid = (best_bid + best_ask) / 2
-            days_left = max(0.5, 6 - day)
+            # days_left = max(0.5, 6 - day)
 
             S = sum(rock_history) / len(rock_history)
             K = strike
