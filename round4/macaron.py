@@ -123,7 +123,7 @@ class Trader:
         self.product = "MAGNIFICENT_MACARONS"
         self.position_limit = 75
         self.conversion_limit = 10
-        self.spread = 2
+        self.spread = 0.5
         self.conversion_pos = 0
 
 
@@ -153,24 +153,25 @@ class Trader:
         pos = state.position.get(product, 0)
         implied_bid = observation.bidPrice - observation.exportTariff - observation.transportFees - 0.1
         implied_ask = observation.askPrice + abs(observation.importTariff) + observation.transportFees
-        for ask in sorted(list(order_depth.sell_ordrers)):
+        for ask in sorted(list(order_depth.sell_orders)):
             if ask < implied_bid - self.spread:
                 volume = min(abs(order_depth.sell_orders[ask]), self.conversion_limit, self.position_limit - pos) # max amount to buy
                 if volume > 0:
                     orders.append(Order(product, ask, volume))
                     self.conversion_pos += volume
                     buy_order_volume[product] += volume
-        for bid in sorted(list(order_depth.buy_ordrers)):
-            if bid < implied_ask + self.spread:
+        for bid in sorted(list(order_depth.buy_orders)):
+            if bid > implied_ask + self.spread:
                 volume = min(abs(order_depth.buy_orders[bid]), self.conversion_limit, self.position_limit + pos) # max amount to buy
                 if volume > 0:
                     orders.append(Order(product, bid, -volume))
                     self.conversion_pos -= volume
                     sell_order_volume[product] += volume
        
-        conversion = min(abs(self.conversion_pos), self.conversion_limit)
+        conversion = -min(abs(self.conversion_pos), self.conversion_limit)
         if(self.conversion_pos < 0):
             conversion = -conversion
+        self.conversion_pos += conversion
         result = {}
         for o in orders:
             result.setdefault(o.symbol, []).append(o)
