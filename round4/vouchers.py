@@ -120,85 +120,57 @@ class Logger:
 
 logger = Logger()
 
-
 class Trader:
     def __init__(self):
-        self.product = "VOLCANIC_ROCK"
-        self.position_limit = 400
-        self.volume = 10
+        self.products = {
+            "VOLCANIC_ROCK_VOUCHER_9500":  {"strike": 9500,  "volume": 20, "window": 50, "spread": 10},
+            "VOLCANIC_ROCK_VOUCHER_9750":  {"strike": 9750,  "volume": 20, "window": 50, "spread": 10},
+            "VOLCANIC_ROCK_VOUCHER_10000": {"strike": 10000, "volume": 20, "window": 50, "spread": 10},
+            "VOLCANIC_ROCK_VOUCHER_10250": {"strike": 10250, "volume": 20, "window": 50, "spread": 10},
+            "VOLCANIC_ROCK_VOUCHER_10500": {"strike": 10500, "volume": 20, "window": 50, "spread": 5},
+        }
 
-        # EMA
-        self.ema = None
-        self.window = 50
-        self.spread = 2
-        self.alpha = 2 / (self.window + 1)
+        self.voucher_limit = 200
+        self.histories = {k: [] for k in self.products}
+        self.emas = {k: None for k in self.products}
+        self.alphas = {k: 2 / (v["window"] + 1) for k, v in self.products.items()}
 
-        # record
-        self.history: List[float] = []
-        self.timestamps: List[int] = []
-
-        # slope, calculated based on some past data
-        # maybe can still be tuned
-        self.slope_window = 80
-        self.slope_threshold = 3.0
-        self.tick_interval = 100
 
     def run(self, state: TradingState):
-        product = self.product
-        orders = []
+        result = {k: [] for k in self.products}
 
-        if product not in state.order_depths:
-            return {}, 0, ""
+        for voucher, config in self.products.items():
+            if voucher not in state.order_depths:
+                continue
 
-        order_depth = state.order_depths[product]
-        if not order_depth.buy_orders or not order_depth.sell_orders:
-            return {}, 0, ""
+            depth = state.order_depths[voucher]
+            if not depth.buy_orders or not depth.sell_orders:
+                continue
 
-        best_bid = max(order_depth.buy_orders)
-        best_ask = min(order_depth.sell_orders)
-        mid_price = (best_bid + best_ask) / 2
-        timestamp = state.timestamp
-        pos = state.position.get(product, 0)
+            best_bid = max(depth.buy_orders)
+            best_ask = min(depth.sell_orders)
+            mid = (best_bid + best_ask) / 2
+            self.histories[voucher].append(mid)
 
-        self.history.append(mid_price)
-        self.timestamps.append(timestamp)
-        if len(self.history) > 200:
-            self.history = self.history[-200:]
-            self.timestamps = self.timestamps[-200:]
+            if len(self.histories[voucher]) > 120:
+                self.histories[voucher] = self.histories[voucher][-120:]
 
-        # EMA
-        if self.ema is None:
-            self.ema = mid_price
-        else:
-            self.ema = self.alpha * mid_price + (1 - self.alpha) * self.ema
+            window = config["window"]
+            fair_value = int(sum(self.histories[voucher][-window:]) / window)
+            pos = state.position.get(voucher, 0)
+            limit = self.voucher_limit
 
-        # slope
-        slope = 0.0
-        for j in range(len(self.timestamps) - 2, -1, -1):
-            tick_diff = (timestamp - self.timestamps[j]) / self.tick_interval
-            if tick_diff >= self.slope_window:
-                slope = (mid_price - self.history[j]) / tick_diff
-                break
+            # buy
+            if pos < limit:
+                buy_price = fair_value - config["spread"]
+                volume = min(config["volume"], limit - pos)
+                result[voucher].append(Order(voucher, buy_price, volume))
 
-        # extreme slope strategy
-        if slope > self.slope_threshold and pos > -self.position_limit:
-            orders.append(Order(product, best_bid, -self.volume))
-        elif slope < -self.slope_threshold and pos < self.position_limit:
-            orders.append(Order(product, best_ask, self.volume))
-        
-        # market making
-        else:
-            fair_value = int(self.ema)
-            buy_price = fair_value - self.spread
-            sell_price = fair_value + self.spread
+            # sell
+            if pos > -limit:
+                sell_price = fair_value + config["spread"]
+                volume = min(config["volume"], pos + limit)
+                result[voucher].append(Order(voucher, sell_price, -volume))
 
-            if pos < self.position_limit:
-                buy_vol = min(self.volume, self.position_limit - pos)
-                orders.append(Order(product, buy_price, buy_vol))
-            if pos > -self.position_limit:
-                sell_vol = min(self.volume, pos + self.position_limit)
-                orders.append(Order(product, sell_price, -sell_vol))
-
-        result = {product: orders}
         logger.flush(state, result, 0, "")
         return result, 0, ""
