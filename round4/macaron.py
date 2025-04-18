@@ -123,8 +123,17 @@ class Trader:
         self.product = "MAGNIFICENT_MACARONS"
         self.position_limit = 75
         self.conversion_limit = 10
-        self.spread = 0.5
+        self.spread = 2
         self.conversion_pos = 0
+        self.price_history = []
+        self.bid_history = []
+        self.ask_history = []
+        self.obs_history = []
+        self.window = 30
+        self.volume = 20
+        self.ema = None
+        self.foreign_ema = None
+        self.alpha = 2 / (self.window + 1)
 
 
     def run(self, state):
@@ -143,34 +152,68 @@ class Trader:
         order_depth = state.order_depths[product]
         if not order_depth.buy_orders or not order_depth.sell_orders:
             return {}, 0, ""
+        
 
-        best_bid = max(order_depth.buy_orders)
-        best_ask = min(order_depth.sell_orders)
+        best_bid = max(order_depth.buy_orders.keys())
+        best_ask = min(order_depth.sell_orders.keys())
         mid_price = (best_bid + best_ask) / 2
+        self.price_history.append(mid_price)
+        if len(self.price_history) > 120:
+            self.price_history = self.price_history[-120:]
+
+        if self.ema is None:
+            self.ema = mid_price
+        else:
+            self.ema = self.alpha * mid_price + (1 - self.alpha) * self.ema
+
+        if len(self.price_history) < self.window:
+            return {}, 0, ""
+
         observation = state.observations.conversionObservations.get(product, None)
         if not observation:
             return {}, 0, ""
         pos = state.position.get(product, 0)
+        self.bid_history.append(observation.bidPrice)
+        self.ask_history.append(observation.askPrice)
+        foreign_mid = (observation.bidPrice + observation.askPrice) / 2
+        if self.foreign_ema is None:
+            self.foreign_ema = foreign_mid
+        else:
+            self.foreign_ema = self.alpha * foreign_mid + (1 - self.alpha) * self.ema
+        self.obs_history.append(foreign_mid)
+        if len(self.obs_history) > 120:
+            self.obs_history = self.obs_history[-120:]
         implied_bid = observation.bidPrice - observation.exportTariff - observation.transportFees - 0.1
+        export_t = observation.exportTariff + observation.transportFees + 0.1
+        import_t = abs(observation.importTariff) + observation.transportFees
         implied_ask = observation.askPrice + abs(observation.importTariff) + observation.transportFees
-        for ask in sorted(list(order_depth.sell_orders)):
-            if ask < implied_bid - self.spread:
-                volume = min(abs(order_depth.sell_orders[ask]), self.conversion_limit, self.position_limit - pos) # max amount to buy
-                if volume > 0:
-                    orders.append(Order(product, ask, volume))
-                    self.conversion_pos += volume
-                    buy_order_volume[product] += volume
-        for bid in sorted(list(order_depth.buy_orders)):
-            if bid > implied_ask + self.spread:
-                volume = min(abs(order_depth.buy_orders[bid]), self.conversion_limit, self.position_limit + pos) # max amount to buy
-                if volume > 0:
-                    orders.append(Order(product, bid, -volume))
-                    self.conversion_pos -= volume
-                    sell_order_volume[product] += volume
+        fair_value = self.foreign_ema
+        ask = round(fair_value + import_t + self.spread)
+        #ask = max(best_ask - 1, round(implied_ask + 0.5))
+        volume = min(self.volume, self.position_limit + pos) # max amount to buy
+        if volume > 0:
+            orders.append(Order(product, ask, -volume))
+            self.conversion_pos -= volume
+            sell_order_volume[product] += volume
+        #bid = min(best_bid + 1, round(implied_bid - 0.5))
+        bid = round(fair_value - export_t - self.spread)
+        volume = min( self.volume, self.position_limit - pos) # max amount to buy
+        if volume > 0:
+            orders.append(Order(product, bid, volume))
+            self.conversion_pos += volume
+            buy_order_volume[product] += volume
        
-        conversion = -min(abs(self.conversion_pos), self.conversion_limit)
-        if(self.conversion_pos < 0):
-            conversion = -conversion
+        conversion = -min(abs(pos), self.conversion_limit)
+        if(pos < 0):
+            if  observation.askPrice < self.foreign_ema + 0.5:
+                conversion = -conversion
+            else:
+                conversion = 0
+        else:
+            if observation.bidPrice > self.foreign_ema - 0.5:
+                pass
+            else:
+                conversion = 0
         self.conversion_pos += conversion
         result = {}
         for o in orders:
