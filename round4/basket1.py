@@ -118,17 +118,24 @@ logger = Logger()
 class Trader:
     def __init__(self):
         self.goods = ["PICNIC_BASKET1", "CROISSANTS", "JAMS", "DJEMBES"]
-
-        self.volume = 30  # etf
         self.position_limit = {
             "PICNIC_BASKET1": 60,
             "CROISSANTS": 250,
             "JAMS": 350,
             "DJEMBES": 60,
         }
+        self.etf_components = {
+            "CROISSANTS": 6,
+            "JAMS": 3,
+            "DJEMBES": 1,
+        }
         self.spread_history = []
+
+        # parameters
         self.time_frame = 100
+        self.volume = 30
         self.z_score_threshold = 1
+        self.warm_up_threshold = 10
 
     def wmid(self, order_depths, product):
         order_depth = order_depths[product]
@@ -138,7 +145,7 @@ class Trader:
         return (best_bid + best_ask) / 2
 
     def calculate_z_score(self, spread):
-        if len(self.spread_history) < 2:
+        if len(self.spread_history) < self.warm_up_threshold:
             return 0.0
 
         self.spread_history = self.spread_history[-self.time_frame:]
@@ -165,7 +172,7 @@ class Trader:
         bid_vols = {p: depths[p].buy_orders[bids[p]] for p in prods}
         ask_vols = {p: depths[p].sell_orders[asks[p]] for p in prods}
 
-        nav = 6 * mids["CROISSANTS"] + 3 * mids["JAMS"] + mids["DJEMBES"]
+        nav = sum(weight * mids[p] for p, weight in self.etf_components.items())
         spread = mids[etf_name] - nav
         spread_z_score = self.calculate_z_score(spread)
 
@@ -177,6 +184,8 @@ class Trader:
 
         nav_buy = 6 * asks["CROISSANTS"] + 3 * asks["JAMS"] + asks["DJEMBES"]
         nav_sell = 6 * bids["CROISSANTS"] + 3 * bids["JAMS"] + bids["DJEMBES"]
+        nav_buy = sum(weight * asks[p] for p, weight in self.etf_components.items())
+        nav_sell = sum(weight * bids[p] for p, weight in self.etf_components.items())
 
         spread_sell = bids[etf_name] - nav_buy
         spread_buy = asks[etf_name] - nav_sell
