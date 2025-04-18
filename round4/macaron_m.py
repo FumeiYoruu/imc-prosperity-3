@@ -123,14 +123,16 @@ class Trader:
         self.product = "MAGNIFICENT_MACARONS"
         self.position_limit = 75
         self.conversion_limit = 10
-        self.spread = 2
+        self.spread = 4.25
         self.conversion_pos = 0
         self.price_history = []
         self.bid_history = []
         self.ask_history = []
         self.obs_history = []
+        self.sugar_m = 2.7712 
+        self.sunlight_m = -3.1271 
         self.window = 30
-        self.volume = 10
+        self.volume = 30
         self.ema = None
         self.foreign_ema = None
         self.alpha = 2 / (self.window + 1)
@@ -184,31 +186,32 @@ class Trader:
         if len(self.obs_history) > 120:
             self.obs_history = self.obs_history[-120:]
         implied_bid = observation.bidPrice - observation.exportTariff - observation.transportFees - 0.1
+        implied_ask = observation.askPrice + abs(observation.importTariff) + observation.transportFees
         export_t = observation.exportTariff + observation.transportFees + 0.1
         import_t = abs(observation.importTariff) + observation.transportFees
-        implied_ask = observation.askPrice + abs(observation.importTariff) + observation.transportFees
-        fair_value = foreign_mid + (export_t + import_t) / 2 
-        ask = min(fair_value + 10, best_ask - 1)
+        #fair_value = 275.8112  + self.sugar_m * observation.sugarPrice +  self.sunlight_m * observation.sunlightIndex
+        fair_value = 188.3812 + 4.9708 * observation.sugarPrice + (-3.3116) * observation.sunlightIndex + (-62.5400) * observation.exportTariff + (-52.0655) * observation.importTariff + 61.5306 * observation.transportFees
+        ask = round(fair_value + import_t + 1)
         volume = min(self.volume, self.position_limit + pos) # max amount to buy
         if volume > 0:
-            orders.append(Order(product, round(ask), -volume))
+            orders.append(Order(product, ask, -volume))
             self.conversion_pos -= volume
             sell_order_volume[product] += volume
-        bid = max(fair_value - 10, best_bid + 1)
+        bid = round(fair_value - export_t - 1)
         volume = min( self.volume, self.position_limit - pos) # max amount to buy
         if volume > 0:
-            orders.append(Order(product, round(bid), volume))
+            orders.append(Order(product, bid, volume))
             self.conversion_pos += volume
             buy_order_volume[product] += volume
        
         conversion = -min(abs(pos), self.conversion_limit)
         if(pos < 0):
-            if  observation.askPrice < self.foreign_ema + 0.5 or True:
+            if observation.askPrice < fair_value + 0.5:
                 conversion = -conversion
             else:
                 conversion = 0
         else:
-            if observation.bidPrice > self.foreign_ema - 0.5 or True:
+            if observation.bidPrice > fair_value - 0.5:
                 pass
             else:
                 conversion = 0
