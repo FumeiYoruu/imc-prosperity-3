@@ -135,7 +135,7 @@ class Trader:
         self.time_frame = 100
         self.volume = 30
         self.z_score_threshold = 1
-        self.warm_up_threshold = 2
+        self.warm_up_threshold = 0.1
 
     def wmid(self, order_depths, product):
         order_depth = order_depths[product]
