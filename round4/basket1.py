@@ -135,7 +135,7 @@ class Trader:
         self.time_frame = 100
         self.volume = 30
         self.z_score_threshold = 1
-        self.warm_up_threshold = 10
+        self.warm_up_threshold = 2
 
     def wmid(self, order_depths, product):
         order_depth = order_depths[product]
@@ -180,11 +180,11 @@ class Trader:
         sell_spread = bids[etf_name] - buy_nav
         buy_spread = asks[etf_name] - sell_nav
 
-        self.spread_history.append(spread)
-
         spread_z_score = self.calculate_z_score(spread)
 
-        logger.print(spread, spread_z_score, self.position_limit[etf_name])
+        self.spread_history.append(spread)
+
+        logger.print(spread, sell_spread, buy_spread, spread_z_score)
         logger.print(bid_vols)
         logger.print(ask_vols)
 
