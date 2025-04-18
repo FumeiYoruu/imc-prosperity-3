@@ -175,14 +175,20 @@ class Trader:
         logger.print(bid_vols)
         logger.print(ask_vols)
 
-        if spread > 0 and spread_z_score > self.z_score_threshold:
+        nav_buy = 6 * asks["CROISSANTS"] + 3 * asks["JAMS"] + asks["DJEMBES"]
+        nav_sell = 6 * bids["CROISSANTS"] + 3 * bids["JAMS"] + bids["DJEMBES"]
+
+        spread_sell = mids[etf_name] - nav_buy
+        spread_buy = mids[etf_name] - nav_sell
+
+        if spread_sell > 0 and spread_z_score > self.z_score_threshold:
             vol = min(self.volume, bid_vols[etf_name], self.position_limit[etf_name] + pos.get(etf_name, 0))
 
             if vol > 0:
                 orders.append(Order(etf_name, bids[etf_name], -vol))
                 sell_order_volume[etf_name] += vol
 
-        elif spread < 0 and spread_z_score < -self.z_score_threshold:
+        elif spread_buy < 0 and spread_z_score < -self.z_score_threshold:
             vol = min(self.volume, -ask_vols[etf_name], self.position_limit[etf_name] - pos.get(etf_name, 0))
 
             if vol > 0:
