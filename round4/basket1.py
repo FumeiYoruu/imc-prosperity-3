@@ -178,8 +178,8 @@ class Trader:
         nav_buy = 6 * asks["CROISSANTS"] + 3 * asks["JAMS"] + asks["DJEMBES"]
         nav_sell = 6 * bids["CROISSANTS"] + 3 * bids["JAMS"] + bids["DJEMBES"]
 
-        spread_sell = mids[etf_name] - nav_buy
-        spread_buy = mids[etf_name] - nav_sell
+        spread_sell = bids[etf_name] - nav_buy
+        spread_buy = asks[etf_name] - nav_sell
 
         if spread_sell > 0 and spread_z_score > self.z_score_threshold:
             vol = min(self.volume, bid_vols[etf_name], self.position_limit[etf_name] + pos.get(etf_name, 0))
