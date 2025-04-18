@@ -140,7 +140,7 @@ class Trader:
         # slope, calculated based on some past data
         # maybe can still be tuned
         self.slope_window = 80
-        self.slope_threshold = 1.7 # 1.5
+        self.slope_threshold = 3.0
         self.tick_interval = 100
 
     def run(self, state: TradingState):
@@ -180,14 +180,6 @@ class Trader:
                 slope = (mid_price - self.history[j]) / tick_diff
                 break
 
-        trader_data = json.dumps({
-            "timestamp": timestamp,
-            "mid": mid_price,
-            "ema": round(self.ema, 2),
-            "slope": round(slope, 3),
-            "pos": pos
-        })
-
         # extreme slope strategy
         if slope > self.slope_threshold and pos > -self.position_limit:
             orders.append(Order(product, best_bid, -self.volume))
@@ -208,5 +200,5 @@ class Trader:
                 orders.append(Order(product, sell_price, -sell_vol))
 
         result = {product: orders}
-        logger.flush(state, result, 0, trader_data)
-        return result, 0, trader_data
+        logger.flush(state, result, 0, "")
+        return result, 0, ""
