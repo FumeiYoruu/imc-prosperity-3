@@ -189,7 +189,8 @@ class Trader:
         implied_ask = observation.askPrice + abs(observation.importTariff) + observation.transportFees
         export_t = observation.exportTariff + observation.transportFees + 0.1
         import_t = abs(observation.importTariff) + observation.transportFees
-        fair_value = 275.8112  + self.sugar_m * observation.sugarPrice +  self.sunlight_m * observation.sunlightIndex
+        #fair_value = 275.8112  + self.sugar_m * observation.sugarPrice +  self.sunlight_m * observation.sunlightIndex
+        fair_value = 188.3812 + 4.9708 * observation.sugarPrice + (-3.3116) * observation.sunlightIndex + (-62.5400) * observation.exportTariff + (-52.0655) * observation.importTariff + 61.5306 * observation.transportFees
         ask = round(fair_value + import_t + 1)
         volume = min(self.volume, self.position_limit + pos) # max amount to buy
         if volume > 0:

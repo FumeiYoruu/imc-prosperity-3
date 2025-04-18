@@ -130,7 +130,7 @@ class Trader:
         self.ask_history = []
         self.obs_history = []
         self.window = 30
-        self.volume = 20
+        self.volume = 10
         self.ema = None
         self.foreign_ema = None
         self.alpha = 2 / (self.window + 1)
@@ -187,30 +187,28 @@ class Trader:
         export_t = observation.exportTariff + observation.transportFees + 0.1
         import_t = abs(observation.importTariff) + observation.transportFees
         implied_ask = observation.askPrice + abs(observation.importTariff) + observation.transportFees
-        fair_value = self.foreign_ema
-        ask = round(fair_value + import_t + self.spread)
-        #ask = max(best_ask - 1, round(implied_ask + 0.5))
+        fair_value = foreign_mid + (export_t + import_t) / 2 
+        ask = min(fair_value + 10, best_ask - 1)
         volume = min(self.volume, self.position_limit + pos) # max amount to buy
         if volume > 0:
-            orders.append(Order(product, ask, -volume))
+            orders.append(Order(product, round(ask), -volume))
             self.conversion_pos -= volume
             sell_order_volume[product] += volume
-        #bid = min(best_bid + 1, round(implied_bid - 0.5))
-        bid = round(fair_value - export_t - self.spread)
+        bid = max(fair_value - 10, best_bid + 1)
         volume = min( self.volume, self.position_limit - pos) # max amount to buy
         if volume > 0:
-            orders.append(Order(product, bid, volume))
+            orders.append(Order(product, round(bid), volume))
             self.conversion_pos += volume
             buy_order_volume[product] += volume
        
         conversion = -min(abs(pos), self.conversion_limit)
         if(pos < 0):
-            if  observation.askPrice < self.foreign_ema + 0.5:
+            if  observation.askPrice < self.foreign_ema + 0.5 or True:
                 conversion = -conversion
             else:
                 conversion = 0
         else:
-            if observation.bidPrice > self.foreign_ema - 0.5:
+            if observation.bidPrice > self.foreign_ema - 0.5 or True:
                 pass
             else:
                 conversion = 0
