@@ -130,9 +130,9 @@ class Trader:
         self.spread_history = []
 
         # parameters
-        self.time_frame = 100
+        self.time_frame = 150
         self.volume = 50
-        self.z_score_threshold = 1
+        self.z_score_threshold = 1.5
         self.warm_up_threshold = 2
 
     def wmid(self, order_depths, product):
@@ -146,11 +146,10 @@ class Trader:
         if len(self.spread_history) < self.warm_up_threshold:
             return 0.0
 
-        # TODO: This will slow it down a lot, change
-        # self.spread_history = self.spread_history[-self.time_frame:]
+        self.spread_history = self.spread_history[-self.time_frame:]
 
-        mean = statistics.mean(self.spread_history[-self.time_frame:])
-        stdev = statistics.stdev(self.spread_history[-self.time_frame:]) if len(self.spread_history) >= 2 else 0.0
+        mean = statistics.mean(self.spread_history)
+        stdev = statistics.stdev(self.spread_history) if len(self.spread_history) >= 2 else 0.0
 
         return 0.0 if stdev == 0 else (spread - mean) / stdev
 
@@ -183,26 +182,16 @@ class Trader:
 
         self.spread_history.append(spread)
 
-        logger.print(mids[etf_name], nav)
-        logger.print(bids[etf_name], buy_nav)
-        logger.print(asks[etf_name], sell_nav)
-        logger.print(spread, sell_spread, buy_spread, spread_z_score)
-        logger.print(bid_vols)
-        logger.print(ask_vols)
+        logger.print(f"spread: {spread}\n")
 
-        # TODO: Figure out better method
-        hist = self.spread_history[-1000:]
-        buy_percentile = np.percentile(hist, 30)
-        sell_percentile = np.percentile(hist, 70)
-
-        if sell_spread > sell_percentile and spread_z_score > self.z_score_threshold:
+        if sell_spread > 0 and spread_z_score > self.z_score_threshold:
             vol = min(self.volume, bid_vols[etf_name], self.position_limit[etf_name] + pos.get(etf_name, 0))
 
             if vol > 0:
                 orders.append(Order(etf_name, bids[etf_name], -vol))
                 sell_order_volume[etf_name] += vol
 
-        elif buy_spread < buy_percentile and spread_z_score < -self.z_score_threshold:
+        elif buy_spread < 0 and spread_z_score < -self.z_score_threshold:
             vol = min(self.volume, -ask_vols[etf_name], self.position_limit[etf_name] - pos.get(etf_name, 0))
 
             if vol > 0:
