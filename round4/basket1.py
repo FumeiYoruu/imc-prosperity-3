@@ -182,8 +182,6 @@ class Trader:
         logger.print(bid_vols)
         logger.print(ask_vols)
 
-        nav_buy = 6 * asks["CROISSANTS"] + 3 * asks["JAMS"] + asks["DJEMBES"]
-        nav_sell = 6 * bids["CROISSANTS"] + 3 * bids["JAMS"] + bids["DJEMBES"]
         nav_buy = sum(weight * asks[p] for p, weight in self.etf_components.items())
         nav_sell = sum(weight * bids[p] for p, weight in self.etf_components.items())
 
