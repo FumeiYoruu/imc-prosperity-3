@@ -194,8 +194,6 @@ class Trader:
             if vol > 0:
                 orders.append(Order(etf_name, bids[etf_name], -vol))
                 sell_order_volume[etf_name] += vol
-
-                # 同时买入 components
                 for p, weight in self.etf_components.items():
                     comp_vol = vol * weight
                     limit = self.position_limit[p] - pos.get(p, 0)
