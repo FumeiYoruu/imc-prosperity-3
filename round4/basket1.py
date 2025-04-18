@@ -173,29 +173,29 @@ class Trader:
         ask_vols = {p: depths[p].sell_orders[asks[p]] for p in prods}
 
         nav = sum(weight * mids[p] for p, weight in self.etf_components.items())
+        buy_nav = sum(weight * asks[p] for p, weight in self.etf_components.items())
+        sell_nav = sum(weight * bids[p] for p, weight in self.etf_components.items())
+
         spread = mids[etf_name] - nav
-        spread_z_score = self.calculate_z_score(spread)
+        sell_spread = bids[etf_name] - buy_nav
+        buy_spread = asks[etf_name] - sell_nav
 
         self.spread_history.append(spread)
+
+        spread_z_score = self.calculate_z_score(spread)
 
         logger.print(spread, spread_z_score, self.position_limit[etf_name])
         logger.print(bid_vols)
         logger.print(ask_vols)
 
-        nav_buy = sum(weight * asks[p] for p, weight in self.etf_components.items())
-        nav_sell = sum(weight * bids[p] for p, weight in self.etf_components.items())
-
-        spread_sell = bids[etf_name] - nav_buy
-        spread_buy = asks[etf_name] - nav_sell
-
-        if spread_sell > 0 and spread_z_score > self.z_score_threshold:
+        if sell_spread > 0 and spread_z_score > self.z_score_threshold:
             vol = min(self.volume, bid_vols[etf_name], self.position_limit[etf_name] + pos.get(etf_name, 0))
 
             if vol > 0:
                 orders.append(Order(etf_name, bids[etf_name], -vol))
                 sell_order_volume[etf_name] += vol
 
-        elif spread_buy < 0 and spread_z_score < -self.z_score_threshold:
+        elif buy_spread < 0 and spread_z_score < -self.z_score_threshold:
             vol = min(self.volume, -ask_vols[etf_name], self.position_limit[etf_name] - pos.get(etf_name, 0))
 
             if vol > 0:
