@@ -184,9 +184,7 @@ class Trader:
 
         self.spread_history.append(spread)
 
-        logger.print(spread, sell_spread, buy_spread, spread_z_score)
-        logger.print(bid_vols)
-        logger.print(ask_vols)
+        logger.print(f"spread: {spread}\n")
 
         if sell_spread > 0 and spread_z_score > self.z_score_threshold:
             vol = min(self.volume, bid_vols[etf_name], self.position_limit[etf_name] + pos.get(etf_name, 0))
