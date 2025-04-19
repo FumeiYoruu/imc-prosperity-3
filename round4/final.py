@@ -177,7 +177,34 @@ class Trader:
         self.csi_flag = False
         self.conversion_limit = 10
         self.csi_window = 200
+        self.squid_window = 30
+        self.squid_momentum_threshold = 0.5
+        self.std_threshold = 3.3 #squid
+        self.squidvolume = 5
 
+    def squid(self, state, orders, buy_order_volume, sell_order_volume, product = 'SQUID_INK'):
+
+        if product not in state.order_depths:
+            return orders, buy_order_volume, sell_order_volume
+
+        order_depth = state.order_depths[product]
+        if not order_depth.buy_orders or not order_depth.sell_orders:
+            return orders, buy_order_volume, sell_order_volume
+
+        best_bid = max(order_depth.buy_orders.keys())
+        best_ask = min(order_depth.sell_orders.keys())
+        pos = state.position.get(product, 0)
+
+        if pos < self.position_limit["SQUID_INK"]:
+            buy_volume = min(self.squidvolume, self.position_limit["SQUID_INK"] - pos)
+            orders.append(Order(product, best_bid, buy_volume))
+            
+        if pos > -self.position_limit["SQUID_INK"]:
+            sell_volume = min(self.squidvolume, pos + self.position_limit["SQUID_INK"])
+            orders.append(Order(product, best_ask, -sell_volume))
+
+        return orders, buy_order_volume, sell_order_volume
+    
     def voucher_trade(self, state, orders, traderObject):
         voucher_history = {}
 
@@ -1026,6 +1053,7 @@ class Trader:
         orders, traderObject =  self.rocks(state, 'VOLCANIC_ROCK', orders, traderObject)
         orders, traderObject = self.voucher_trade(state, orders, traderObject)
         orders = self.macaron(orders, state, 'MAGNIFICENT_MACARONS')
+        orders, buy_order_volume, sell_order_volume = self.squid(state, orders, buy_order_volume, sell_order_volume, 'SQUID_INK')
         
         result = {}
         for o in orders:
