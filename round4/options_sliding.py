@@ -123,7 +123,6 @@ logger = Logger()
 class Trader:
     def __init__(self):
         self.rock = "VOLCANIC_ROCK"
-        self.rock_limit = 400
         self.vouchers = {
             "VOLCANIC_ROCK_VOUCHER_9500": 9500,
             "VOLCANIC_ROCK_VOUCHER_9750": 9750,
@@ -132,7 +131,6 @@ class Trader:
             "VOLCANIC_ROCK_VOUCHER_10500": 10500,
         }
         self.voucher_limits = {k: 200 for k in self.vouchers}
-        self.window_size = 100
 
         # Volatility smile fit parameters
         self.vm_a = 0.26441561
@@ -142,7 +140,7 @@ class Trader:
         self.mt_list = []
         self.iv_list = []
 
-        self.recalculation_count = 5
+        self.recalculation_count = 10
 
         self.ewma_half_life = 50
         self.ewma_alpha     = 1 - 2**(-1/self.ewma_half_life)
@@ -153,7 +151,7 @@ class Trader:
         self.timestamp_per_day = 100000
 
         # TODO: tune following params
-        self.threshold = 0.0005
+        self.threshold = 0.005
         self.volume = 30
 
     def norm_cdf(self, x):
@@ -186,7 +184,6 @@ class Trader:
     def run(self, state: TradingState):
         result = {}
         conversions = 0
-        rock_history = []
 
         day = state.timestamp / self.timestamp_per_day
         days_left = (4 - day) / 365
@@ -194,36 +191,28 @@ class Trader:
         if state.traderData:
             try:
                 saved = jsonpickle.decode(state.traderData)
-                rock_history = saved.get("rock_history", [])
                 self.ewma_S = saved.get("ewma_S", 0)
             except:
-                rock_history = []
+                self.ewma_S = 0
+
 
         if self.rock not in state.order_depths:
-            traderData = jsonpickle.encode({"rock_history": rock_history, "ewma_S": self.ewma_S})
+            traderData = jsonpickle.encode({"ewma_S": self.ewma_S})
             logger.flush(state, result, conversions, traderData)
             return {}, conversions, traderData
 
         rock_depth = state.order_depths[self.rock]
         if not rock_depth.buy_orders or not rock_depth.sell_orders:
-            traderData = jsonpickle.encode({"rock_history": rock_history, "ewma_S": self.ewma_S})
+            traderData = jsonpickle.encode({"ewma_S": self.ewma_S})
             logger.flush(state, result, conversions, traderData)
             return {}, conversions, traderData
 
         rock_mid = (max(rock_depth.buy_orders) + min(rock_depth.sell_orders)) / 2
-        rock_history.append(rock_mid)
 
         if self.ewma_S is None:
             self.ewma_S = rock_mid
         else:
             self.ewma_S = self.ewma_alpha * rock_mid + (1 - self.ewma_alpha) * self.ewma_S
-
-        if len(rock_history) <= self.window_size:
-            traderData = jsonpickle.encode({"rock_history": rock_history, "ewma_S": self.ewma_S})
-            logger.flush(state, result, conversions, traderData)
-            return {}, conversions, traderData
-        else:
-            rock_history = rock_history[-self.window_size:]
 
         logger.print(state.timestamp, (state.timestamp % (self.timestamp_per_day // self.recalculation_count * 100 // 100)), (self.timestamp_per_day // 5 * 100 // 100))
 
@@ -290,6 +279,6 @@ class Trader:
             if orders:
                 result[voucher] = orders
 
-        traderData = jsonpickle.encode({"rock_history": rock_history, "ewma_S": self.ewma_S})
+        traderData = jsonpickle.encode({"ewma_S": self.ewma_S})
         logger.flush(state, result, conversions, traderData)
         return result, conversions, traderData
