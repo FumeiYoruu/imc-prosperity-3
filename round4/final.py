@@ -966,7 +966,8 @@ class Trader:
         if not observation:
             return orders
         pos = state.position.get(product, 0)
-
+        sunlightIndex = observation.sunlightIndex
+        self.sunlight_history.append(sunlightIndex)
 
         if len(self.sunlight_history) > 500:
             self.sunlight_history = self.sunlight_history[-500:]
@@ -998,7 +999,7 @@ class Trader:
                 if pos > -self.position_limit[product]:
                     sell_volume = min(volume, pos + self.position_limit[product])
                     orders.append(Order(product, ask_price, -sell_volume))
-        return orders, conversion
+        return orders
 
     def run(self, state: TradingState):
         self.record_trades(state, 'MAGNIFICENT_MACARONS')
@@ -1015,20 +1016,20 @@ class Trader:
             sell_order_volume[p] = 0
 
         self.update_price_history(state.order_depths, self.goods)
-        # orders, buy_order_volume, sell_order_volume = self.kelp(state, 'KELP', orders, buy_order_volume, sell_order_volume, traderObject)
-        # orders, buy_order_volume, sell_order_volume = self.rainforest_resin(state, 'RAINFOREST_RESIN', orders, buy_order_volume, sell_order_volume)
-        # orders, buy_order_volume, sell_order_volume = self.djembes(state, 'DJEMBES', orders, buy_order_volume, sell_order_volume, traderObject)
-        # orders, buy_order_volume, sell_order_volume, traderObject = self.etf_b1(state.order_depths, state.position, orders,
-        #                                                           buy_order_volume, sell_order_volume, prods, traderObject)
-        # orders, buy_order_volume, sell_order_volume, traderObject = self.etf_b2(state.order_depths, state.position, orders,
-        #                                                           buy_order_volume, sell_order_volume, prods2, traderObject)
-        # orders, traderObject =  self.rocks(state, 'VOLCANIC_ROCK', orders, traderObject)
-        # orders, traderObject = self.voucher_trade(state, orders, traderObject)
-        orders, conversion = self.macaron(orders, state, 'MAGNIFICENT_MACARONS')
+        orders, buy_order_volume, sell_order_volume = self.kelp(state, 'KELP', orders, buy_order_volume, sell_order_volume, traderObject)
+        orders, buy_order_volume, sell_order_volume = self.rainforest_resin(state, 'RAINFOREST_RESIN', orders, buy_order_volume, sell_order_volume)
+        orders, buy_order_volume, sell_order_volume = self.djembes(state, 'DJEMBES', orders, buy_order_volume, sell_order_volume, traderObject)
+        orders, buy_order_volume, sell_order_volume, traderObject = self.etf_b1(state.order_depths, state.position, orders,
+                                                                  buy_order_volume, sell_order_volume, prods, traderObject)
+        orders, buy_order_volume, sell_order_volume, traderObject = self.etf_b2(state.order_depths, state.position, orders,
+                                                                  buy_order_volume, sell_order_volume, prods2, traderObject)
+        orders, traderObject =  self.rocks(state, 'VOLCANIC_ROCK', orders, traderObject)
+        orders, traderObject = self.voucher_trade(state, orders, traderObject)
+        orders = self.macaron(orders, state, 'MAGNIFICENT_MACARONS')
         
         result = {}
         for o in orders:
             result.setdefault(o.symbol, []).append(o)
         traderData = jsonpickle.encode(traderObject)
         logger.flush(state, result, 0, "")
-        return result, conversion, traderData
+        return result, 0, traderData
