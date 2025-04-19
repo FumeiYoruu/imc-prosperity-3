@@ -132,9 +132,6 @@ class Trader:
 
         self.voucher_limit = 200
         self.histories = {k: [] for k in self.products}
-        self.emas = {k: None for k in self.products}
-        self.alphas = {k: 2 / (v["window"] + 1) for k, v in self.products.items()}
-
 
     def run(self, state: TradingState):
         result = {k: [] for k in self.products}
