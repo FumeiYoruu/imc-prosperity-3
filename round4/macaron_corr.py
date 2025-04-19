@@ -123,17 +123,22 @@ class Trader:
         self.product = "MAGNIFICENT_MACARONS"
         self.position_limit = 75
         self.conversion_limit = 10
-        self.spread = 2
+        self.spread = 4.25
         self.conversion_pos = 0
         self.price_history = []
         self.bid_history = []
         self.ask_history = []
         self.obs_history = []
-        self.window = 30
-        self.volume = 10
+        self.sugar_history = []
+        self.sunlight_history = []
+        self.sugar_m = 3
+        self.sunlight_m = -2
+        self.window = 50
+        self.volume = 75 
         self.ema = None
         self.foreign_ema = None
         self.alpha = 2 / (self.window + 1)
+        self.csi = 60
 
 
     def run(self, state):
@@ -177,49 +182,90 @@ class Trader:
         self.ask_history.append(observation.askPrice)
         implied_bid = observation.bidPrice - observation.exportTariff - observation.transportFees - 0.1
         implied_ask = observation.askPrice + abs(observation.importTariff) + observation.transportFees
-        foreign_mid = (implied_bid + implied_ask) / 2
+        foreign_mid = (observation.bidPrice + observation.askPrice) / 2
         if self.foreign_ema is None:
             self.foreign_ema = foreign_mid
         else:
             self.foreign_ema = self.alpha * foreign_mid + (1 - self.alpha) * self.ema
         self.obs_history.append(foreign_mid)
-        if len(self.obs_history) < self.window:
-            return {}, 0, ""
-        foreign_sma = np.mean(self.obs_history[-self.window:])
-
         if len(self.obs_history) > 120:
             self.obs_history = self.obs_history[-120:]
-
+        foreign_sma = np.mean(self.obs_history[-self.window:])
         export_t = observation.exportTariff + observation.transportFees + 0.1
         import_t = abs(observation.importTariff) + observation.transportFees
-
-        fair_value = foreign_sma
-        ask = max(fair_value + import_t + 1, best_ask)
-        volume = min(self.volume, self.position_limit + pos) # max amount to buy
-        if volume > 0:
-            orders.append(Order(product, round(ask), -volume))
-            self.conversion_pos -= volume
-            sell_order_volume[product] += volume
-        bid = min(fair_value - export_t - 1, best_bid)
-        volume = min( self.volume, self.position_limit - pos) # max amount to buy
-        if volume > 0:
-            orders.append(Order(product, round(bid), volume))
-            self.conversion_pos += volume
-            buy_order_volume[product] += volume
-       
-        conversion = -min(abs(pos), self.conversion_limit)
-        if(pos < 0):
-            if  observation.askPrice < fair_value + 0.5:
-                conversion = -conversion
-            else:
-                conversion = 0
-        else:
-            if observation.bidPrice > fair_value - 0.5:
-                pass
-            else:
-                conversion = 0
-        self.conversion_pos += conversion
+        sugarPrice = observation.sugarPrice
+        sunlightIndex = observation.sunlightIndex
+        self.sugar_history.append(sugarPrice)
+        self.sunlight_history.append(sunlightIndex)
+        
+        
+        
+        # price_mean = np.mean(self.obs_history[-self.window:])
+        # sugar_mean = np.mean(self.sugar_history[-self.window:])
         conversion = 0
+        if observation.sunlightIndex < self.csi:
+            if len(self.sugar_history) < self.window or len(self.sunlight_history) < self.window:
+                return {}, 0, ""
+            sugar_momentum = self.sugar_history[-1] - self.sugar_history[-self.window] 
+            sunlight_momentum = self.sunlight_history[-1] - self.sunlight_history[-self.window]
+            combined_momentum = sugar_momentum * np.mean(self.obs_history[-self.window]) / np.mean(self.sugar_history[-self.window])
+
+            price_momentum = self.obs_history[-1] - self.obs_history[-self.window]
+            fair_value = self.foreign_ema
+            if  combined_momentum < price_momentum:
+                ask = best_ask + 1
+                volume = min(self.volume, self.position_limit + pos) # max amount to buy
+                if volume > 0:
+                    orders.append(Order(product, round(ask), -volume))
+                    self.conversion_pos -= volume
+                    sell_order_volume[product] += volume
+            if combined_momentum > price_momentum:
+                bid = best_bid - 1
+                volume = min( self.volume, self.position_limit - pos) # max amount to buy
+                if volume > 0:
+                    orders.append(Order(product, round(bid), volume))
+                    self.conversion_pos += volume
+                    buy_order_volume[product] += volume
+            conversion = -min(abs(pos), self.conversion_limit)
+            if(pos < 0):
+                if(combined_momentum < price_momentum):
+                    if observation.askPrice < fair_value + 0.5:
+                        conversion = -conversion
+                    else:
+                        conversion = 0
+            else:
+                if(combined_momentum > price_momentum):
+                    if observation.bidPrice > fair_value - 0.5:
+                        pass
+                    else:
+                        conversion = 0
+        else:
+            fair_value = foreign_sma
+            ask = max(fair_value + import_t + 4.5, best_ask - 0.5)
+            volume = min(self.volume, self.position_limit + pos) # max amount to buy
+            if volume > 0:
+                orders.append(Order(product, round(ask), -volume))
+                self.conversion_pos -= volume
+                sell_order_volume[product] += volume
+            bid = min(fair_value - export_t - 4.5, best_bid + 0.5)
+            volume = min( self.volume, self.position_limit - pos) # max amount to buy
+            if volume > 0:
+                orders.append(Order(product, round(bid), volume))
+                self.conversion_pos += volume
+                buy_order_volume[product] += volume
+            if(pos < 0):
+                if observation.askPrice < fair_value + 0.5:
+                    conversion = -conversion
+                else:
+                    conversion = 0
+            else:
+                if observation.bidPrice > fair_value - 0.5:
+                    pass
+                else:
+                    conversion = 0
+       
+        
+        self.conversion_pos += conversion
         result = {}
         for o in orders:
             result.setdefault(o.symbol, []).append(o)

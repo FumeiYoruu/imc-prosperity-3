@@ -135,14 +135,7 @@ class Trader:
 
         # record
         self.history: List[float] = []
-        self.timestamps: List[int] = []
-
-        # slope, calculated based on some past data
-        # maybe can still be tuned
-        self.slope_window = 80
-        self.slope_threshold = 3.0
-        self.tick_interval = 100
-
+        
     def run(self, state: TradingState):
         product = self.product
         orders = []
@@ -161,43 +154,26 @@ class Trader:
         pos = state.position.get(product, 0)
 
         self.history.append(mid_price)
-        self.timestamps.append(timestamp)
         if len(self.history) > 200:
             self.history = self.history[-200:]
-            self.timestamps = self.timestamps[-200:]
 
         # EMA
         if self.ema is None:
             self.ema = mid_price
         else:
             self.ema = self.alpha * mid_price + (1 - self.alpha) * self.ema
-
-        # slope
-        slope = 0.0
-        for j in range(len(self.timestamps) - 2, -1, -1):
-            tick_diff = (timestamp - self.timestamps[j]) / self.tick_interval
-            if tick_diff >= self.slope_window:
-                slope = (mid_price - self.history[j]) / tick_diff
-                break
-
-        # extreme slope strategy
-        if slope > self.slope_threshold and pos > -self.position_limit:
-            orders.append(Order(product, best_bid, -self.volume))
-        elif slope < -self.slope_threshold and pos < self.position_limit:
-            orders.append(Order(product, best_ask, self.volume))
         
         # market making
-        else:
-            fair_value = int(self.ema)
-            buy_price = fair_value - self.spread
-            sell_price = fair_value + self.spread
+        fair_value = int(self.ema)
+        buy_price = fair_value - self.spread
+        sell_price = fair_value + self.spread
 
-            if pos < self.position_limit:
-                buy_vol = min(self.volume, self.position_limit - pos)
-                orders.append(Order(product, buy_price, buy_vol))
-            if pos > -self.position_limit:
-                sell_vol = min(self.volume, pos + self.position_limit)
-                orders.append(Order(product, sell_price, -sell_vol))
+        if pos < self.position_limit:
+            buy_vol = min(self.volume, self.position_limit - pos)
+            orders.append(Order(product, buy_price, buy_vol))
+        if pos > -self.position_limit:
+            sell_vol = min(self.volume, pos + self.position_limit)
+            orders.append(Order(product, sell_price, -sell_vol))
 
         result = {product: orders}
         logger.flush(state, result, 0, "")
