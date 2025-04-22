@@ -120,21 +120,22 @@ class Logger:
 
 logger = Logger()
 
+
 class Trader:
     def __init__(self):
         self.product = "VOLCANIC_ROCK"
         self.position_limit = 400
-        self.volume = 10
+        self.volume = 25
 
+        # EMA
         self.ema = None
-        self.window = 50
+        self.window = 120
+        self.spread = 3
         self.alpha = 2 / (self.window + 1)
-        self.spread = 1
 
+        # record
         self.history: List[float] = []
-        self.z_window = 20
-        self.z_threshold = 2.0
-
+        
     def run(self, state: TradingState):
         product = self.product
         orders = []
@@ -149,31 +150,21 @@ class Trader:
         best_bid = max(order_depth.buy_orders)
         best_ask = min(order_depth.sell_orders)
         mid_price = (best_bid + best_ask) / 2
+        timestamp = state.timestamp
         pos = state.position.get(product, 0)
 
         self.history.append(mid_price)
         if len(self.history) > 200:
             self.history = self.history[-200:]
 
+        # EMA
         if self.ema is None:
             self.ema = mid_price
         else:
             self.ema = self.alpha * mid_price + (1 - self.alpha) * self.ema
-
-        z_adjustment = 0
-        if len(self.history) >= self.z_window:
-            recent = self.history[-self.z_window:]
-            mean = np.mean(recent)
-            std = np.std(recent)
-            if std > 1e-6:
-                z_score = (mid_price - mean) / std
-                if z_score > self.z_threshold:
-                    z_adjustment = 1
-                elif z_score < -self.z_threshold:
-                    z_adjustment = -1
-
-        fair_value = int(self.ema) + z_adjustment
-
+        
+        # market making
+        fair_value = int(self.ema)
         buy_price = fair_value - self.spread
         sell_price = fair_value + self.spread
 
