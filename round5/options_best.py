@@ -121,9 +121,9 @@ logger = Logger()
 class Trader:
     def __init__(self):
         self.products = {
-            "VOLCANIC_ROCK_VOUCHER_9500":  {"strike": 9500,  "volume": 10, "window": 50, "spread": 4},
-            "VOLCANIC_ROCK_VOUCHER_9750":  {"strike": 9750,  "volume": 10, "window": 50, "spread": 4},
-            "VOLCANIC_ROCK_VOUCHER_10000": {"strike": 10000, "volume": 10, "window": 50, "spread": 4},
+            "VOLCANIC_ROCK_VOUCHER_9500":  {"strike": 9500,  "volume": 30, "window": 50, "spread": 4},
+            "VOLCANIC_ROCK_VOUCHER_9750":  {"strike": 9750,  "volume": 30, "window": 50, "spread": 4},
+            "VOLCANIC_ROCK_VOUCHER_10000": {"strike": 10000, "volume": 30, "window": 50, "spread": 4},
             "VOLCANIC_ROCK_VOUCHER_10250": {"strike": 10250, "volume": 10, "window": 50, "spread": 4},
             "VOLCANIC_ROCK_VOUCHER_10500": {"strike": 10500, "volume": 10, "window": 20, "spread": 3},
         }
