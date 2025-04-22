@@ -155,7 +155,7 @@ class Trader:
             best_ask = min(od.sell_orders)
             mid = (best_bid + best_ask) / 2
             self.history[symbol].append(mid)
-            if len(self.history[symbol]) > 200:
+            if len(self.history[symbol]) > cfg["window"]:
                 self.history[symbol].pop(0)
 
             # EMA
