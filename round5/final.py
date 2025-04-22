@@ -177,7 +177,6 @@ class Trader:
         self.b2_volume = 50
         self.b2_z_score_threshold = 1.5
         self.b2_warm_up_threshold = 2
-        self.b2_momentum_window = 30
 
 
 
@@ -300,7 +299,6 @@ class Trader:
         return buy_order_volume, sell_order_volume
 
     def rocks(self, state, product, orders, traderObject):
-        rock_ema = None
         if traderObject:
             try:
                 rock_ema = traderObject.get("rock_ema", None)
@@ -861,14 +859,6 @@ class Trader:
 
         return orders, buy_order_volume, sell_order_volume, traderObject
 
-    def calculate_momentum(self, product):
-        if len(self.price_history[product]) < self.b2_momentum_window:
-            return 0.0
-            
-        recent_prices = self.price_history[product][-self.b2_momentum_window:]
-        return recent_prices[-1] - recent_prices[-self.b2_momentum_window]
-
-
     def etf_b2(self, order_depths, pos, orders, buy_order_volume, sell_order_volume, prods, traderObject):
         b2_spread_history = []
 
@@ -910,41 +900,19 @@ class Trader:
         traderObject['b2_spread_history'] = b2_spread_history
 
 
-        component_momentum = {
-            p: self.calculate_momentum(p) 
-            for p in self.etf_components2.keys()
-        }
-        avg_momentum = 0
-        for p, m in component_momentum.items():
-            avg_momentum += self.etf_components2[p] * m
-        
-        momentum_threshold = 10
-        if avg_momentum > momentum_threshold:
-            # Positive momentum - buy basket
-            vol = min(self.b2_volume, -ask_vols[etf_name], self.position_limit[etf_name] - pos.get(etf_name, 0))
-            if vol > 0:
-                orders.append(Order(etf_name, round(buy_nav) - 1, vol))
-                buy_order_volume[etf_name] += vol
-        elif avg_momentum < -momentum_threshold:
-            # Negative momentum - sell basket
+        if sell_spread > 0 and spread_z_score > self.b2_z_score_threshold:
             vol = min(self.b2_volume, bid_vols[etf_name], self.position_limit[etf_name] + pos.get(etf_name, 0))
+
             if vol > 0:
-                orders.append(Order(etf_name, round(sell_nav) + 1, -vol))
+                orders.append(Order(etf_name, bids[etf_name], -vol))
                 sell_order_volume[etf_name] += vol
 
-        # Statistical arbitrage as fallback when momentum is weak
-        if abs(avg_momentum) < momentum_threshold/2:
-            if sell_spread > 0 and spread_z_score > self.b2_z_score_threshold:
-                vol = min(self.b2_volume, bid_vols[etf_name], self.position_limit[etf_name] + pos.get(etf_name, 0))
-                if vol > 0:
-                    orders.append(Order(etf_name, bids[etf_name], -vol))
-                    sell_order_volume[etf_name] += vol
+        elif buy_spread < 0 and spread_z_score < -self.b2_z_score_threshold:
+            vol = min(self.b2_volume, -ask_vols[etf_name], self.position_limit[etf_name] - pos.get(etf_name, 0))
 
-            elif buy_spread < 0 and spread_z_score < -self.b2_z_score_threshold:
-                vol = min(self.b2_volume, -ask_vols[etf_name], self.position_limit[etf_name] - pos.get(etf_name, 0))
-                if vol > 0:
-                    orders.append(Order(etf_name, asks[etf_name], vol))
-                    buy_order_volume[etf_name] += vol
+            if vol > 0:
+                orders.append(Order(etf_name, asks[etf_name], vol))
+                buy_order_volume[etf_name] += vol
 
         return orders, buy_order_volume, sell_order_volume, traderObject
 
@@ -972,7 +940,7 @@ class Trader:
         orders, buy_order_volume, sell_order_volume, traderObject = self.etf_b1(state.order_depths, state.position, orders,
                                                                   buy_order_volume, sell_order_volume, prods, traderObject)
         orders, buy_order_volume, sell_order_volume, traderObject = self.etf_b2(state.order_depths, state.position, orders,
-                                                                   buy_order_volume, sell_order_volume, prods2, traderObject)
+                                                                  buy_order_volume, sell_order_volume, prods2, traderObject)
         orders, traderObject =  self.rocks(state, 'VOLCANIC_ROCK', orders, traderObject)
         orders, traderObject = self.voucher_trade(state, orders, traderObject)
         
